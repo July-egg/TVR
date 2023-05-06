@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>屏锥玻璃2号工位_29D6E130_1669338406_1</title>
+    <meta charset="utf-8">
+    <style>
+      .right-block {
+        margin-left: auto;
+        display: block;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      .detail td, .detail th {
+        padding: 4px;
+      }
+      .key {
+        font-weight: bold;
+        text-align: right;
+      }
+      .result td, .result th {
+        border: 1px solid #efefef;
+        text-align: left;
+        padding: 8px;
+      }
+      img {
+        width: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="width: fit-content; margin: auto;">
+      <button class="right-block" onclick="exportExcel()">导出 Excel 文件</button>
+      <table class="details">
+        <tr>
+          <td class="key">检查人：</td>
+          <td>张三</td>
+        </tr>
+        <tr>
+          <td class="key">视频文件：</td>
+          <td>屏锥玻璃2号工位_29D6E130_1669338406_1.mp4</td>
+        </tr>
+        <tr>
+          <td class="key">工位：</td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td class="key">视频录制时间：</td>
+          <td>2023/04/15 12:15:01</td>
+        </tr>
+        <tr>
+          <td class="key">备注：</td>
+          <td>测试全部检测功能</td>
+        </tr>
+        <tr>
+          <td class="key">文档生成时间：</td>
+          <td>2023/04/15 12:30:19</td>
+        </tr>
+      </table>
+      <br />
+      <table class="result">
+        <tr>
+          <th>序号</th>  <th>操作时间段</th>
+          <th>操作时间点</th>
+          <th>视频时间点</th>
+          <th>系统判断结果</th>
+          <th>判断图像</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>12:15:01-12:16:04</td>
+          <td>12:15:01</td>  <td>0:00:00</td>
+          <td>荧光粉(白印残留)</td>  <td><img src="./images/000.jpg" alt="无图像" /></td>
+        </tr>
+      </table>
+    </div>
+  </body>
+  <script>
+    function exportExcel() {
+      console.log('clicked')
+      let src = 'file:///C:/Users/jyh/Desktop/TVR/TelevisionRecyclingApp 2.0/src/results/屏锥玻璃2号工位_29D6E130_1669338406_1/__src/屏锥玻璃2号工位_29D6E130_1669338406_1.xls'
+      let iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = "javascript: '<script>location.href=\"" + src + "\"<\/script>'"
+      document.getElementsByTagName('body')[0].appendChild(iframe)
+    }
+  </script>
+</html>

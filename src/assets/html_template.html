@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{ title }}</title>
+    <meta charset="utf-8">
+    <style>
+      .right-block {
+        margin-left: auto;
+        display: block;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      .detail td, .detail th {
+        padding: 4px;
+      }
+      .key {
+        font-weight: bold;
+        text-align: right;
+      }
+      .result td, .result th {
+        border: 1px solid #efefef;
+        text-align: left;
+        padding: 8px;
+      }
+      img {
+        width: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="width: fit-content; margin: auto;">
+      <button class="right-block" onclick="exportExcel()">导出 Excel 文件</button>
+      <table class="details">
+{{ details }}
+      </table>
+      <br />
+      <table class="result">
+{{ results }}
+      </table>
+    </div>
+  </body>
+  <script>
+    function exportExcel() {
+      console.log('clicked')
+      let src = 'file:///{{ xls_path }}'
+      let iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = "javascript: '<script>location.href=\"" + src + "\"<\/script>'"
+      document.getElementsByTagName('body')[0].appendChild(iframe)
+    }
+  </script>
+</html>
