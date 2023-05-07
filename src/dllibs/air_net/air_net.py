@@ -8,6 +8,7 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 
 import mmcv
+from mmcv.transforms import Compose
 from mmdet.apis import inference_detector, init_detector
 from mmengine.config import Config, ConfigDict
 from mmengine.logging import print_log
@@ -22,7 +23,7 @@ from mmyolo.utils.misc import get_file_list, show_data_classes
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-cfg_path = './yolov5_s-v61_syncbn_1xb16-300e_fog.py'
+cfg_path = 'dllibs/air_net/yolov5_s-v61_syncbn_1xb16-300e_fog.py'
 
 import utility.config
 from utility.dip import OpenCV_to_PIL, tensor_to_OpenCV
@@ -53,19 +54,16 @@ def load_model():
 
     # 获取配置文件信息
     config = Config.fromfile(cfg_path)
-
     if weight_name == utility.config.get_air_weight():
         return
-
     weight_name = utility.config.get_air_weight()
-
     weights = str(ROOT / 'weights' / f'{weight_name}.pth')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    checkpoint = torch.load(weights, map_location=device)
+    # checkpoint = torch.load(weights, map_location=device)
+    checkpoint = weights
 
-    model = init_detector(
-        config, checkpoint, device=device, cfg_options={})
+    model = init_detector(config, checkpoint, device=device, cfg_options={})
 
     if torch.cuda.is_available():
         model.to(device)
@@ -83,7 +81,9 @@ def segment(imgs):
 
     imgs = imgs.to(device)
 
-    pred = [inference_detector(model, img) for img in imgs]
+    # pred = [inference_detector(model, img) for img in imgs]
+    test_pipeline = Compose(model.cfg.test_dataloader.dataset.pipeline)
+    pred = inference_detector(model, imgs)
 
     pred = torch.sigmoid(pred)
     pred = (pred > 0.5).float()

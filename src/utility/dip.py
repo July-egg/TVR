@@ -331,7 +331,7 @@ def segment_air_with_batch(images: List[np.ndarray], bs: int):
 
     ret = []
 
-    resized_images = [resize(image, 256, 256, 'cubic')[1] for image in images]
+    resized_images = [resize(image, 640, 640, 'cubic')[1] for image in images]
 
     for i in range(0, len(resized_images), bs):
         bi, bj = i, i + bs
