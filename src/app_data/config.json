@@ -10,7 +10,7 @@
     "valid_weight": "280782_model_best",
     "state_weight": "model_best",
     "segmentation_weight": "CE_Net_276_8",
-    "air_weight": "bbox_mAP_epoch_250",
+    "fog_weight": "bbox_mAP_epoch_250",
     "last_video_dir": "C:\\Users\\jyh\\Desktop\\TVR\\video",
     "last_save_dir": "./results",
     "last_username": "admin",

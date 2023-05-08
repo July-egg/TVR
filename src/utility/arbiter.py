@@ -143,7 +143,7 @@ class Arbiter:
         # fps = frame_filter.computed_fps
 
         section_results = []  # 保存序列化检测结果
-        air_section_results = []  # 保存序列化检测结果
+        fog_section_results = []  # 保存序列化检测结果
 
         section_idx = 0
 
@@ -152,7 +152,7 @@ class Arbiter:
         classifier_detector = ClassifierDetector(path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
         # 创建分类器，用于视频帧图像的状态分类
         classifier = Classifier(classifier_detector)
-        # classifier_air = Classifier(classifier_detector)
+        # classifier_fog = Classifier(classifier_detector)
 
         # 遍历视频并批量获取帧
         for i, (tag, frame_idx, msec, frame) in enumerate(_enum):
@@ -161,7 +161,7 @@ class Arbiter:
 
             # 将当前帧添加到序列中，使用yolo模型检测屏面玻璃位置并保存到frame中
             sectionalizer.add_frame(tag, frame_idx, msec, frame, type=type)
-            # sectionalizer.add_frame_air(tag, frame_idx, msec, frame, type=type)
+            # sectionalizer.add_frame_fog(tag, frame_idx, msec, frame, type=type)
 
             if sectionalizer.is_ready():
                 # 从序列中获取帧
@@ -174,7 +174,7 @@ class Arbiter:
                 if type=='tv':
                     classifier.push_partial_section(is_over, psection)
                 else:
-                    classifier.push_partial_section_air(is_over, psection)
+                    classifier.push_partial_section_fog(is_over, psection)
 
                 # 如果当前视频到达末尾
                 if is_over:
@@ -193,18 +193,18 @@ class Arbiter:
                             print(f'{section_idx:02}:', section_results[-1])
                     else:
                         # 根据之前检测缓存的结果，调用classify函数判断输出最近检测结果
-                        start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = classifier.classify_air()
+                        start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = classifier.classify_fog()
 
                         if classifier_detector is not None:
                             classifier_detector.save_result()
 
-                        air_section_results.append((
+                        fog_section_results.append((
                             start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame,
                             frame_no, frame_msec
                         ))
 
                         if verbose:
-                            print(f'{section_idx:02}:', air_section_results[-1])
+                            print(f'{section_idx:02}:', fog_section_results[-1])
 
                     section_idx += 1
 
@@ -220,4 +220,4 @@ class Arbiter:
         if progress_queue is not None:
             progress_queue.put((-1, -1))
 
-        return section_results if type=='tv' else air_section_results
+        return section_results if type=='tv' else fog_section_results

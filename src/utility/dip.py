@@ -82,7 +82,8 @@ def _resize_Image(image: Image.Image, height: int, width: int, resample='cubic')
     return scale, res
 
 
-def resize(image: Union[Image.Image, np.ndarray], height: int, width: int, resample='cubic') -> Tuple[float, Union[Image.Image, np.ndarray]]:
+def resize(image: Union[Image.Image, np.ndarray], height: int, width: int, resample='cubic') -> Tuple[
+    float, Union[Image.Image, np.ndarray]]:
     if isinstance(image, np.ndarray):
         image = OpenCV_to_PIL(image)
         scale, res = _resize_Image(image, height, width)
@@ -106,12 +107,14 @@ def square_bbox(bbox: Tuple[int, int, int, int], width: int) -> Tuple[int, int, 
     width = int(round(width))
     return l, t, l + width, t + width
 
+
 def crop_square(image: np.ndarray, bbox: Tuple[int, int, int, int], width: int) -> np.ndarray:
     l, t, r, b = square_bbox(bbox, width)
     return image[t:b, l:r]
 
 
-def rectangle_and_text(image: Union[np.ndarray, Image.Image], bbox, contents, font_size=15, bgcolor=None, fgcolor=(255, 255, 255), draw_bbox=True) -> Union[np.ndarray, Image.Image]:
+def rectangle_and_text(image: Union[np.ndarray, Image.Image], bbox, contents, font_size=15, bgcolor=None,
+                       fgcolor=(255, 255, 255), draw_bbox=True) -> Union[np.ndarray, Image.Image]:
     def _lightness(c):
         color = list(c)
         for i, _ in enumerate(color):
@@ -191,7 +194,8 @@ def rectangle_and_text(image: Union[np.ndarray, Image.Image], bbox, contents, fo
         return image
 
 
-def text(image: Union[np.ndarray, Image.Image], content, origin, bgcolor=None, fgcolor=(255, 255, 255)) -> Union[np.ndarray, Image.Image]:
+def text(image: Union[np.ndarray, Image.Image], content, origin, bgcolor=None, fgcolor=(255, 255, 255)) -> Union[
+    np.ndarray, Image.Image]:
     l, t = origin
     return rectangle_and_text(image, (l, t, l + 1, t + 1), [(content, 'lt3')], bgcolor, fgcolor, draw_bbox=False)
 
@@ -223,7 +227,8 @@ def detect_screen(image: np.ndarray) -> Optional[Tuple[float, float, float, floa
 
 
 # 使用yolov5模型检测电视机屏幕位置，返回预测的电视机位置坐标
-def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) -> List[Optional[Tuple[float, float, float, float, float, float]]]:
+def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) -> List[
+    Optional[Tuple[float, float, float, float, float, float]]]:
     from dllibs.yolov5 import yolov5
 
     yolov5.load_model()
@@ -260,6 +265,7 @@ def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) 
 
     return ret
 
+
 # 使用resnet模型划分屏幕状态：荧光粉
 def classify_state_with_batch(images: List[np.ndarray], bs: int):
     from dllibs.state_net import state_resnet
@@ -280,6 +286,7 @@ def classify_state_with_batch(images: List[np.ndarray], bs: int):
         ret.extend(preds)
 
     return ret
+
 
 # 利用碎屏检测模型判断是否碎屏（没有被调用）
 def classify_broken_with_batch(images: List[np.ndarray], bs: int):
@@ -302,6 +309,7 @@ def classify_broken_with_batch(images: List[np.ndarray], bs: int):
 
     return ret
 
+
 # 判断是否存在锥屏分离现象
 def segment_cone_with_batch(images: List[np.ndarray], bs: int):
     from dllibs.seg_net import seg_net
@@ -323,11 +331,12 @@ def segment_cone_with_batch(images: List[np.ndarray], bs: int):
 
     return ret
 
-# 判断是否存在漏氟
-def segment_air_with_batch(images: List[np.ndarray], bs: int):
-    from dllibs.air_net import air_net
 
-    air_net.load_model()
+# 判断是否存在漏氟
+def segment_fog_with_batch(images: List[np.ndarray], bs: int):
+    from dllibs.fog_net import fog_net
+
+    fog_net.load_model()
 
     ret = []
 
@@ -338,7 +347,7 @@ def segment_air_with_batch(images: List[np.ndarray], bs: int):
         bimages = resized_images[bi:bj]
 
         arrays = stack_images(bimages)
-        preds = air_net.segment(arrays)
+        preds = fog_net.segment(arrays)
 
         ret.extend(preds)
 

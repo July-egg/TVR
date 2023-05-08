@@ -1,11 +1,11 @@
 当前待改进：
 flask进度条实现
 config前后端交互更新
-air和tv使用不同的video组件，store.js使用不同的变量保存二者的文件列表。audit共用。
+fog和tv使用不同的video组件，store.js使用不同的变量保存二者的文件列表。audit共用。
 返回的html页面无法导出excel及显示图片
 result页面是否调用flask接口getResults
 flask中detect函数根据type调用不同的算法(air/tv)
-air算法的使用参考锥屏分离
+fog算法的使用参考锥屏分离
 前端选择结果保存文件夹
 后端需要能够删除temp文件夹及视频
 导出可用的exe，使用electron

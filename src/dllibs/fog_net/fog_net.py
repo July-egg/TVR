@@ -23,14 +23,14 @@ from mmyolo.utils.misc import get_file_list, show_data_classes
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-cfg_path = 'dllibs/air_net/yolov5_s-v61_syncbn_1xb16-300e_fog.py'
+cfg_path = 'dllibs/fog_net/yolov5_s-v61_syncbn_1xb16-300e_fog.py'
 
 import utility.config
 from utility.dip import OpenCV_to_PIL, tensor_to_OpenCV
 from ..helpers import select_device
 
 
-class AIR_STATE(enum.Enum):
+class FOG_STATE(enum.Enum):
     EXIST = 0
     NONE = 1
 
@@ -54,9 +54,9 @@ def load_model():
 
     # 获取配置文件信息
     config = Config.fromfile(cfg_path)
-    if weight_name == utility.config.get_air_weight():
+    if weight_name == utility.config.get_fog_weight():
         return
-    weight_name = utility.config.get_air_weight()
+    weight_name = utility.config.get_fog_weight()
     weights = str(ROOT / 'weights' / f'{weight_name}.pth')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

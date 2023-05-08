@@ -161,11 +161,11 @@ def get_segment_weight() -> str:
     else:
         return 'model_best'
 
-def get_air_weight() -> str:
+def get_fog_weight() -> str:
     global config
 
-    if 'air_weight' in config:
-        return config['air_weight']
+    if 'fog_weight' in config:
+        return config['fog_weight']
     else:
         return 'model_best'
 

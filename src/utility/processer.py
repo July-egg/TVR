@@ -10,7 +10,7 @@ from .dip import (
     classify_state_with_batch,
     crop_square,
     segment_cone_with_batch,
-    segment_air_with_batch
+    segment_fog_with_batch
 )
 
 from .video import Video
@@ -34,7 +34,7 @@ SCREEN_DETECTION_BATCH_SIZE = get_batch_info()['detection']
 PHOSPHOR_DETECTION_BATCH_SIZE = get_batch_info()['state_test']
 BROKEN_DETECTION_BATCH_SIZE = get_batch_info()['broken_test']
 CONE_DETECTION_BATCH_SIZE = get_batch_info()['segmentation']
-AIR_DETECTION_BATCH_SIZE = get_batch_info()['segmentation']
+FOG_DETECTION_BATCH_SIZE = get_batch_info()['segmentation']
 
 
 class FRAME_TAG(enum.Enum):
@@ -159,7 +159,7 @@ class Sectionalizer:
             if len(self.immediate_frames) == SCREEN_DETECTION_BATCH_SIZE:
                 ans = detect_screen_with_batch([
                     frame for _, _, frame in self.immediate_frames
-                ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres) if type == 'tv' else [('air') for _ in range(SCREEN_DETECTION_BATCH_SIZE)]
+                ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres) if type == 'tv' else [('fog') for _ in range(SCREEN_DETECTION_BATCH_SIZE)]
 
                 # 如果新开始检测一个批次帧 且 检测到了屏面玻璃
                 if self.state == self.State.OUT_OF_SECTION:
@@ -194,7 +194,7 @@ class Sectionalizer:
                 if len(self.section_info[0]) + len(self.section_info[1]) >= SCREEN_DETECTION_CACHE_MAXIMUM:
                     self.parse(is_over=False, type=type)
 
-    def add_frame_air(self, tag: FRAME_TAG, idx: int, msec: float, frame: np.ndarray, type:str) -> None:
+    def add_frame_fog(self, tag: FRAME_TAG, idx: int, msec: float, frame: np.ndarray, type:str) -> None:
         if idx < 0:
             self._finish(type=type)
             return
@@ -207,7 +207,7 @@ class Sectionalizer:
 
             # 如果当前批次数量已够，调用yolov5依次检测每一帧的屏面玻璃位置----------------->
             if len(self.immediate_frames) == SCREEN_DETECTION_BATCH_SIZE:
-                ans = ['air'*SCREEN_DETECTION_BATCH_SIZE]
+                ans = ['fog'*SCREEN_DETECTION_BATCH_SIZE]
 
                 # 如果新开始检测一个批次帧 且 检测到了屏面玻璃
                 if self.state == self.State.OUT_OF_SECTION:
@@ -227,7 +227,7 @@ class Sectionalizer:
                     if self._section_is_over():
                         self.state = self.State.OUT_OF_SECTION
 
-                        self.parse_air(is_over=True)
+                        self.parse_fog(is_over=True)
 
                         self.immediate_frames.clear()
                         self.deferred_frames.clear()
@@ -239,13 +239,13 @@ class Sectionalizer:
 
                 # 判断当前缓存是否已满
                 if len(self.section_info[0]) + len(self.section_info[1]) >= SCREEN_DETECTION_CACHE_MAXIMUM:
-                    self.parse_air(is_over=False, type=type)
+                    self.parse_fog(is_over=False, type=type)
 
     def _finish(self, type:str) -> None:
         # 对最后一个需要检测的帧重复add_frame中的操作
         ans = detect_screen_with_batch([
             frame for _, _, frame in self.immediate_frames
-        ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres) if type == 'tv' else [('air') for _ in range(len(self.immediate_frames))]
+        ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres) if type == 'tv' else [('fog') for _ in range(len(self.immediate_frames))]
 
         if self.state == self.State.IN_SECTION or self._found_screen(ans):
             self.section_info[0].extend(self.immediate_frames)
@@ -325,7 +325,7 @@ class Sectionalizer:
             (frame for _, _, frame in additional_frames),
             SCREEN_DETECTION_BATCH_SIZE,
             self.conf_thres
-        ) if type=='tv' else [('air') for _ in range(len(additional_frames))]
+        ) if type=='tv' else [('fog') for _ in range(len(additional_frames))]
 
         for (frame_no, msec, frame), bbox in zip(additional_frames, ans):
             section.append((frame_no, msec, frame, bbox))
@@ -347,7 +347,7 @@ class Sectionalizer:
             self.section_idx += 1
             self.section_detect_flags.clear()
 
-    def parse_air(self, type:str, is_over: bool=True) -> None:
+    def parse_fog(self, type:str, is_over: bool=True) -> None:
         self.ready = True
 
 
@@ -361,7 +361,7 @@ class SECTION_CATEGORY(enum.Enum):
     PHOSPHOR_WATER = 4
     PHOSPHOR_WHITE = 5
 
-class AIR_CATEGORY(enum.Enum):
+class FOG_CATEGORY(enum.Enum):
     EXIST = 0
     NONE = 1
 
@@ -405,12 +405,12 @@ class Classifier:
         self.broken_frame_cache = Classifier.BatchCache(BROKEN_DETECTION_BATCH_SIZE)  # 碎屏图像帧
         self.phosphor_frame_cache = Classifier.BatchCache(PHOSPHOR_DETECTION_BATCH_SIZE)  # 荧光粉残留图像帧
         self.cone_frame_cache = Classifier.BatchCache(CONE_DETECTION_BATCH_SIZE)  # 锥屏分类帧
-        self.air_frame_cache = Classifier.BatchCache(AIR_DETECTION_BATCH_SIZE)  # 漏氟分类帧
+        self.fog_frame_cache = Classifier.BatchCache(FOG_DETECTION_BATCH_SIZE)  # 漏氟分类帧
 
         self.broken_detection_results = []
         self.phosphor_detection_results = []
         self.cone_detection_results = []
-        self.air_detection_results = [] # 漏氟检测结果保存
+        self.fog_detection_results = [] # 漏氟检测结果保存
 
         # 保存检测出屏面玻璃的第一个和最后一个帧的no与msec
         self.first_frame_no = None
@@ -426,13 +426,13 @@ class Classifier:
         self.detector = detector
 
         # 漏氟检测所需变量
-        self.air_first_frame_no = None
-        self.air_last_frame_no = None
-        self.air_start_msec = None
-        self.air_end_msec = None
-        self.air_tail_frames = []
-        self.air_last_psection = None
-        self.air_result = AIR_CATEGORY.NONE
+        self.fog_first_frame_no = None
+        self.fog_last_frame_no = None
+        self.fog_start_msec = None
+        self.fog_end_msec = None
+        self.fog_tail_frames = []
+        self.fog_last_psection = None
+        self.fog_result = FOG_CATEGORY.NONE
 
     # 按批次添加图像帧,每一帧都保存屏面玻璃的位置坐标
     def push_partial_section(self, is_over: bool, psection):
@@ -557,20 +557,20 @@ class Classifier:
 
         return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, cone_percentage, frame, frame_no, frame_no * self.start_msec / self.first_frame_no
 
-    def push_partial_section_air(self, is_over: bool, psection):
+    def push_partial_section_fog(self, is_over: bool, psection):
         if psection:
-            self.air_last_psection = psection
+            self.fog_last_psection = psection
 
-        if self.air_first_frame_no is None:
+        if self.fog_first_frame_no is None:
             # 找到第一个检测到屏面玻璃的帧的索引idx
-            air_first_frame_idx = index_of_first(psection, lambda item: item[3])
-            self.air_first_frame_no = psection[air_first_frame_idx][0]
-            self.air_start_msec = psection[air_first_frame_idx][1]
+            fog_first_frame_idx = index_of_first(psection, lambda item: item[3])
+            self.fog_first_frame_no = psection[fog_first_frame_idx][0]
+            self.fog_start_msec = psection[fog_first_frame_idx][1]
 
-        air_last_frame_index = index_of_last(psection, lambda item: item[3])
-        if air_last_frame_index is not None:
-            self.air_last_frame_no = psection[air_last_frame_index][0]
-            self.air_end_msec = psection[air_last_frame_index][1]
+        fog_last_frame_index = index_of_last(psection, lambda item: item[3])
+        if fog_last_frame_index is not None:
+            self.fog_last_frame_no = psection[fog_last_frame_index][0]
+            self.fog_end_msec = psection[fog_last_frame_index][1]
 
         if self._finished():
             return
@@ -583,68 +583,68 @@ class Classifier:
                     is_over or self.detector is not None
             )
 
-            self.air_tail_frames.append((frame_no, frame, bbox))
+            self.fog_tail_frames.append((frame_no, frame, bbox))
 
-            self.air_frame_cache.push(frame_no, frame)
-            if self.air_frame_cache.is_full() or frame_idx + 1 == len(self.air_tail_frames) or is_last_frame:
+            self.fog_frame_cache.push(frame_no, frame)
+            if self.fog_frame_cache.is_full() or frame_idx + 1 == len(self.fog_tail_frames) or is_last_frame:
                 # 判断漏氟残留-------------------->
-                air_batch_ans = segment_air_with_batch(self.air_frame_cache.frames(), AIR_DETECTION_BATCH_SIZE)
-                air_batch_ans = [(mask, np.sum(mask) // 255) for mask in air_batch_ans]
-                air_cache_results = self.air_frame_cache.join_nones(air_batch_ans, clear=True)
-                self.air_detection_results.extend(air_cache_results)
+                fog_batch_ans = segment_fog_with_batch(self.fog_frame_cache.frames(), FOG_DETECTION_BATCH_SIZE)
+                fog_batch_ans = [(mask, np.sum(mask) // 255) for mask in fog_batch_ans]
+                fog_cache_results = self.fog_frame_cache.join_nones(fog_batch_ans, clear=True)
+                self.fog_detection_results.extend(fog_cache_results)
 
             if self._finished():
                 break
 
-        self.air_tail_frames = self.air_tail_frames[- 3 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO:]
+        self.fog_tail_frames = self.fog_tail_frames[- 3 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO:]
 
         # 如果当前视频遍历完毕，再判断是否锥屏分离
         if is_over:
-            for idx, (frame_no, frame, bbox) in enumerate(self.air_tail_frames):
-                self.air_frame_cache.push(frame_no, frame)
+            for idx, (frame_no, frame, bbox) in enumerate(self.fog_tail_frames):
+                self.fog_frame_cache.push(frame_no, frame)
 
-                if self.air_frame_cache.is_full() or idx + 1 == len(self.air_tail_frames):
+                if self.fog_frame_cache.is_full() or idx + 1 == len(self.fog_tail_frames):
                     # 判断锥屏是否分离-------------------->
-                    air_batch_ans = segment_air_with_batch(self.air_frame_cache.frames(), AIR_DETECTION_BATCH_SIZE)
-                    air_batch_ans = [(mask, np.sum(mask) // 255) for mask in air_batch_ans]
-                    air_cache_results = self.air_frame_cache.join_nones(air_batch_ans, clear=True)
-                    self.air_detection_results.extend(air_cache_results)
+                    fog_batch_ans = segment_fog_with_batch(self.fog_frame_cache.frames(), FOG_DETECTION_BATCH_SIZE)
+                    fog_batch_ans = [(mask, np.sum(mask) // 255) for mask in fog_batch_ans]
+                    fog_cache_results = self.fog_frame_cache.join_nones(fog_batch_ans, clear=True)
+                    self.fog_detection_results.extend(fog_cache_results)
 
 
-    def classify_air(self) -> Tuple[int, int, SECTION_CATEGORY, float, np.ndarray, int, float]:
+    def classify_fog(self) -> Tuple[int, int, SECTION_CATEGORY, float, np.ndarray, int, float]:
         # 判断是否漏氟
-        has_cone_residue, cone_residue_frame_no = self._air_residue_examination()
+        has_cone_residue, cone_residue_frame_no = self._fog_residue_examination()
         has_cone_residue = False
         if has_cone_residue:
-            self.air_result = AIR_CATEGORY.EXIST
+            self.fog_result = FOG_CATEGORY.EXIST
         else:
-            self.air_result = AIR_CATEGORY.NONE
+            self.fog_result = FOG_CATEGORY.NONE
         frame_no = cone_residue_frame_no
 
         # 判断漏氟含量百分比
         cone_percentage = 0
-        if self.result == AIR_CATEGORY.EXIST:
+        if self.result == FOG_CATEGORY.EXIST:
             cone_idx = index_of_last(
-                self.air_detection_results,
+                self.fog_detection_results,
                 func=lambda cnt: cnt is not None and cnt != 0,
                 key=lambda cone_ans: None if cone_ans is None else cone_ans[1]
             )
-            cone_percentage = np.sum(self.air_detection_results[cone_idx][1][1]) / (256 * 256 / 1.44) * 100
+            cone_percentage = np.sum(self.fog_detection_results[cone_idx][1][1]) / (256 * 256 / 1.44) * 100
 
         # TODO
         fn, frame = -1, None
 
-        for fn, _, frame, _ in self.air_last_psection:
+        for fn, _, frame, _ in self.fog_last_psection:
             if fn == frame_no:
                 break
 
         if fn != frame_no:
             frame = None
 
-        return self.air_first_frame_no, self.air_last_frame_no, self.air_start_msec, self.air_end_msec, self.air_result, cone_percentage, frame, frame_no, frame_no * self.air_start_msec / self.air_first_frame_no
+        return self.fog_first_frame_no, self.fog_last_frame_no, self.fog_start_msec, self.fog_end_msec, self.fog_result, cone_percentage, frame, frame_no, frame_no * self.fog_start_msec / self.fog_first_frame_no
 
-    def _air_residue_examination(self) -> bool:
-        cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in self.air_detection_results]
+    def _fog_residue_examination(self) -> bool:
+        cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in self.fog_detection_results]
         tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
         sub_res = cone_res[-tail_range:]
         cone_max_len, cone_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1])

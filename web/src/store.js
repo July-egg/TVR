@@ -50,7 +50,7 @@ const mutations = {
     pageChange(state, i){
         state.pageIndex = String(i)
         if(i == '2-1'){
-            state.detectType = 'air'
+            state.detectType = 'fog'
         }
         if(i == '2-2'){
             state.detectType = 'tv'

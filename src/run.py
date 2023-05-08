@@ -57,20 +57,20 @@ def detectOne():
     # print(idx, type, files)
     # print(executor, workstation, date_time, memo)
 
-    if type == 'air':
+    if type == 'fog':
         # 如果当前视频序列为空，则将files添加进去
-        if len(controller_air.model._video_handlers) == 0:
+        if len(controller_fog.model._video_handlers) == 0:
             print('当前视频序列为空，将files添加进去')
             for f in files:
                 addVideo(f, type)
 
         # 设置视频详细信息
-        controller_air.set_video_details(idx, audit)
+        controller_fog.set_video_details(idx, audit)
 
         # 对单个视频文件进行检测
-        on_examine_one_video(dest_dir, idx, controller_air, type)
+        on_examine_one_video(dest_dir, idx, controller_fog, type)
 
-        res = open(dest_dir + '/' + Path(controller_air.model.get(idx).video_path()).stem + '/summary.html', 'rb')
+        res = open(dest_dir + '/' + Path(controller_fog.model.get(idx).video_path()).stem + '/summary.html', 'rb')
         return Response(res, mimetype='text/html')
     else:
         # 如果当前视频序列为空，则将files添加进去
@@ -111,8 +111,8 @@ def addVideo(file, type):
     with open(file_path, "wb+") as out_file:
         out_file.write(buffer_video)
 
-    if type=='air':
-        controller_air.add_video(file_path)
+    if type=='fog':
+        controller_fog.add_video(file_path)
     elif type=='tv':
         controller_tv.add_video(file_path)
 
@@ -138,9 +138,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 创建controller控制类
-    controller_air = MainWindowController(args.use_detectors)
-    viewmodel_air = ViewModel()
-    controller_air.set_model(viewmodel_air)
+    controller_fog = MainWindowController(args.use_detectors)
+    viewmodel_fog = ViewModel()
+    controller_fog.set_model(viewmodel_fog)
 
     controller_tv = MainWindowController(args.use_detectors)
     viewmodel_tv = ViewModel()

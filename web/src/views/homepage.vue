@@ -47,7 +47,7 @@
         <el-main>
           <home v-if="page== '1'"></home>
           <result v-else-if="page=='3'"></result>
-          <air v-else-if="page=='2-1'"></air>
+          <fog v-else-if="page=='2-1'"></fog>
           <tv v-else></tv>
         </el-main>
       </el-container>
@@ -59,7 +59,7 @@
 <script>
 import topbar from "@/components/topbar";
 import home from "@/components/home";
-import air from "@/components/air";
+import fog from "@/components/fog";
 import result from "@/components/result";
 import tv from "@/components/tv";
 
@@ -70,7 +70,7 @@ export default {
     }
   },
   components:{
-    topbar, home, air, result, tv
+    topbar, home, fog, result, tv
   },
   methods: {
       handleSelect(index, indexPath){
