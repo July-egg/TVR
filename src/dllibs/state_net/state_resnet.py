@@ -56,7 +56,7 @@ def load_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     checkpoint = torch.load(weights, map_location=device)
 
-    model = resnet.resnet([3, 4, 6, 3], num_classes=4, arch='senet', drop_layer=True, wider=False, leaky_relu=False)
+    model = resnet.resnet([3, 4, 6, 3], num_classes=2, arch='senet', drop_layer=True, wider=False, leaky_relu=False)
 
     if torch.cuda.is_available():
         model = torch.nn.DataParallel(model).cuda()
@@ -82,6 +82,6 @@ def classify(imgs):
     # p[0]中保存的是荧光粉清除干净的概率
     # pred = [1 - p[0].item() for p in pred]
     # 这里的pred保存的是荧光粉清楚
-    # pred = [p[0].item() for p in pred]
+    pred = [1 - p[0].item() for p in pred]
 
     return pred

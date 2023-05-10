@@ -174,7 +174,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Editor directories and files
-.idea
+.idea/
+temp/
 
 #Electron-builder output
 /dist_electron

@@ -18,35 +18,42 @@ from tkinter import filedialog
 from tkinter import messagebox
 
 # 对视频进行检测的函数
-def _examine_videos(dest_dir, indexes, force: bool, controller, type='tv') -> None:
+def _examine_videos(dest_dir, indexes, controller) -> bool:
     # 获取上一次的保存地址
+    print(dest_dir)
     config.update_last_save_dir(dest_dir)
     has_examined_video = False
+
     for idx in indexes:
         handler = controller.model.get(idx)
         if handler.is_examined():
             has_examined_video = True
-            if force:
-                controller.examine_video(idx, dest_dir, type)
-        else:
-            controller.examine_video(idx, dest_dir, type)
+
+    print('has_examined_video:', has_examined_video)
     return has_examined_video
 
 # 检测单个视频的函数
-def on_examine_one_video(dest_dir, idx, controller, type) -> None:
+def on_examine_one_video(dest_dir, idx, controller, type) -> bool:
     # 检测单个视频时，先判断是否已经质检过一次，是的话让用户进行选择
     if dest_dir:
-        has_examined = _examine_videos(dest_dir, [idx], False, controller, type)
+        has_examined = _examine_videos(dest_dir, [idx], controller)
         if has_examined:
-            reply = False
-            if reply:
-                _examine_videos(dest_dir, [idx], True, controller, type)
-            else:
-                return
+            return True
+        else:
+            try:
+                print('开始进行检测\n')
+                controller.examine_video(idx, dest_dir, type)
+                print(controller.summary_queue)
+
+            except:
+                print('检测出错！')
+                return False
+            return True
+
 
 dest_dir = ''
 @app.route('/video/detect', methods=['post'])
-def detectOne():
+async def detectOne():
     global dest_dir
     # 获取前端传递的信息
     files = request.files.getlist('files[]')  # 获取文件列表，FileStorage类型
@@ -83,10 +90,16 @@ def detectOne():
         controller_tv.set_video_details(idx, audit)
 
         # 对单个视频文件进行检测
-        on_examine_one_video(dest_dir, idx, controller_tv, type)
+        has_examined_video = on_examine_one_video(dest_dir, idx, controller_tv, type)
 
-        res = open(dest_dir + '/' + Path(controller_tv.model.get(idx).video_path()).stem + '/summary.html', 'rb')
-        return Response(res, mimetype='text/html')
+        print('是否检测完成：', has_examined_video)
+
+        # TODO 把被动返回检测结果变成get_result用户主动拉取
+        if has_examined_video:
+            summary_path = dest_dir + '/' + Path(controller_tv.model.get(idx).video_path()).stem + '/summary.html'
+            if os.path.exists(summary_path):
+                res = open(summary_path, 'rb')
+                return Response(res, mimetype='text/html')
 
 
 # 将视频文件添加到viewmodel中
@@ -154,7 +167,7 @@ if __name__ == '__main__':
     #     messagebox.showinfo("提示", "请先选择检测结果保存的文件夹")
     #     dest_dir = filedialog.askdirectory()  # 选择文件夹
     #     print('\n检测结果保存地址：', dest_dir)
-    dest_dir = 'C:/Users/jyh/Desktop/TVR/TelevisionRecyclingApp 2.0/src/results'
+    dest_dir = 'D:/screenproject/TVR/src/results'
     app.run(host='127.0.0.1', port=5000)
 
     # controller.exit(kill_all=args.kill_all_when_exit)
