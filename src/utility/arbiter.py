@@ -160,7 +160,7 @@ class Arbiter:
                 progress_queue.put((i, len(frame_filter)))
 
             # 将当前帧添加到序列中，使用yolo模型检测屏面玻璃位置并保存到frame中
-            sectionalizer.add_frame(tag, frame_idx, msec, frame, type=type)
+            sectionalizer.add_frame(tag, frame_idx, msec, frame, video_type=type)
             # sectionalizer.add_frame_fog(tag, frame_idx, msec, frame, type=type)
 
             if sectionalizer.is_ready():

@@ -131,7 +131,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.activate_video(idx.row())
 
     # 对视频进行检测的函数
-    def _examine_videos(self, dest_dir, indexes, force: bool) -> None:
+    def _examine_videos(self, dest_dir, indexes, force: bool) -> bool:
         # 获取上一次的保存地址
         config.update_last_save_dir(dest_dir)
 

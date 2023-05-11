@@ -70,7 +70,8 @@ def _resize_Image(image: Image.Image, height: int, width: int, resample='cubic')
     scale = min(scale_h, scale_w)
     dest_height, dest_width = _int(h * scale), _int(w * scale)
 
-    if len(torchvision.__version__) > 11:
+    # 由于torchvision版本高于0.9.1，故改为第一种方法
+    if torchvision.__version__:
         inter = transforms.InterpolationMode.BICUBIC if resample == 'cubic' else transforms.InterpolationMode.BILINEAR
     else:
         inter = Image.BICUBIC if resample == 'cubic' else Image.BILINEAR
