@@ -228,8 +228,7 @@ def detect_screen(image: np.ndarray) -> Optional[Tuple[float, float, float, floa
 
 
 # 使用yolov5模型检测电视机屏幕位置，返回预测的电视机位置坐标
-def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) -> List[
-    Optional[Tuple[float, float, float, float, float, float]]]:
+def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) -> List[Optional[Tuple[float, float, float, float, float, float]]]:
     from dllibs.yolov5 import yolov5
 
     yolov5.load_model()
@@ -289,7 +288,7 @@ def classify_state_with_batch(images: List[np.ndarray], bs: int):
     return ret
 
 
-# 利用碎屏检测模型判断是否碎屏（没有被调用）
+# 利用碎屏检测模型判断是否碎屏
 def classify_broken_with_batch(images: List[np.ndarray], bs: int):
     from dllibs.broken_net import valid_resnet
 
@@ -297,7 +296,7 @@ def classify_broken_with_batch(images: List[np.ndarray], bs: int):
 
     ret = []
 
-    resized_images = [resize(image, 224, 224, 'linear')[1] for image in images]
+    resized_images = [resize(image, 320, 320, 'linear')[1] for image in images]
 
     for i in range(0, len(resized_images), bs):
         bi, bj = i, i + bs
@@ -334,22 +333,43 @@ def segment_cone_with_batch(images: List[np.ndarray], bs: int):
 
 
 # 判断是否存在漏氟
-def segment_fog_with_batch(images: List[np.ndarray], bs: int):
+def detect_fog_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.3) -> List[Optional[Tuple[float, float, float, float, float, float]]]:
     from dllibs.fog_net import fog_net
 
     fog_net.load_model()
 
+    scales, resized_images = [], []
+    for image in images:
+        scale, resized = resize(image, 640, 640)
+        scales.append(scale)
+        resized_images.append(resized)
+
     ret = []
 
-    resized_images = [resize(image, 640, 640, 'cubic')[1] for image in images]
-
-    for i in range(0, len(resized_images), bs):
+    for i in range(0, len(scales), bs):
         bi, bj = i, i + bs
-        bimages = resized_images[bi:bj]
+        bscales, bimages = scales[bi:bj], resized_images[bi:bj]
 
         arrays = stack_images(bimages)
-        preds = fog_net.segment(arrays)
-
-        ret.extend(preds)
+        preds = fog_net.detect(arrays, conf_thres)
+        for i, pred in enumerate(preds):
+            if pred.shape[0] == 0:
+                ret.append(None)
+            else:
+                # box = pred[0]
+                _, indices = torch.max(pred, dim=0)
+                max_conf_idx = indices[5]
+                box = pred[max_conf_idx]
+                box = box.cpu().numpy().astype(np.float64).reshape((6,))
+                if int(round(box[-1])) != 0:
+                    ret.append(None)
+                else:
+                    box[:4] = box[:4] / bscales[i]
+                    x1, y1, x2, y2, conf, cls = box[0], box[1], box[2], box[3], box[4], box[5]
+                    ret.append((x1, y1, x2, y2, conf, cls))
 
     return ret
+
+
+if __name__ == '__main__':
+    detect_fog_with_batch()

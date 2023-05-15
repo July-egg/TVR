@@ -2,6 +2,7 @@ import os
 from argparse import ArgumentParser
 from pathlib import Path
 import enum
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
@@ -23,7 +24,7 @@ from mmyolo.utils.misc import get_file_list, show_data_classes
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-cfg_path = 'dllibs/fog_net/yolov5_s-v61_syncbn_1xb16-300e_fog.py'
+cfg_path = 'yolov5_s-v61_syncbn_1xb16-300e_fog.py'
 
 import utility.config
 from utility.dip import OpenCV_to_PIL, tensor_to_OpenCV
@@ -54,42 +55,40 @@ def load_model():
 
     # 获取配置文件信息
     config = Config.fromfile(cfg_path)
+    if 'init_cfg' in config.model.backbone:
+        config.model.backbone.init_cfg = None
+
     if weight_name == utility.config.get_fog_weight():
         return
     weight_name = utility.config.get_fog_weight()
-    weights = str(ROOT / 'weights' / f'{weight_name}.pth')
+    checkpoint = str(ROOT / 'weights' / f'{weight_name}.pth')
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # checkpoint = torch.load(weights, map_location=device)
-    checkpoint = weights
+    device_fog = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = init_detector(config, checkpoint, device=device, cfg_options={})
-
-    if torch.cuda.is_available():
-        model.to(device)
-
-    model.eval()
-
-    cudnn.benchmark = True
+    model = init_detector(config, checkpoint, device=device_fog, cfg_options={})
 
 
 @torch.no_grad()
-def segment(imgs):
+def detect(imgs, conf_thres=0.5):  # conf_thres设置0.5还是0.3？
     global model, device
 
-    imgs = torch.stack([_compose(OpenCV_to_PIL(img)) for img in imgs], dim=0)
-
-    imgs = imgs.to(device)
-
-    # pred = [inference_detector(model, img) for img in imgs]
+    model.cfg.test_dataloader.dataset.pipeline[
+        0].type = 'mmdet.LoadImageFromNDArray'
     test_pipeline = Compose(model.cfg.test_dataloader.dataset.pipeline)
-    pred = inference_detector(model, imgs)
 
-    pred = torch.sigmoid(pred)
-    pred = (pred > 0.5).float()
+    imgs = imgs.transpose((0, 3, 1, 2))[:, ::-1]
+    imgs = np.ascontiguousarray(imgs)
 
-    ans = tensor_to_OpenCV(pred.cpu())
+    im = torch.from_numpy(imgs).to(device)
+    im = im.half() if half else im.float()
 
-    ret = [sub_image for sub_image in ans]
+    im /= 255
+
+    pred = inference_detector(model, imgs, test_pipeline=test_pipeline)
+
+    pred_instances = pred.pred_instances[
+        pred.pred_instances.scores > conf_thres]
+
+    ret = [p.cpu() for p in pred_instances]
 
     return ret

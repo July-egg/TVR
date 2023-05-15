@@ -60,7 +60,7 @@ def load_model():
 
     if torch.cuda.is_available():
         model = torch.nn.DataParallel(model).cuda()
-    model.load_state_dict(checkpoint['state_dict'], False)
+    model.load_state_dict(checkpoint['state_dict'], strict=False)
 
     model.eval()
 

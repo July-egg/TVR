@@ -178,9 +178,6 @@ def getResults():
     return Response('error')
 
 
-
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--use-detectors', action='store_true')
 parser.add_argument('--kill-all-when-exit', action='store_true')

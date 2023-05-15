@@ -1,6 +1,6 @@
 from datetime import datetime
 import enum
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Any
 import numpy as np
 
 from .tools import index_of_first, index_of_last, max_seq_len, max_seq_len_with_torlenance
@@ -10,7 +10,7 @@ from .dip import (
     classify_state_with_batch,
     crop_square,
     segment_cone_with_batch,
-    segment_fog_with_batch
+    detect_fog_with_batch
 )
 
 from .video import Video
@@ -33,7 +33,7 @@ SCREEN_DETECTION_BATCH_SIZE = get_batch_info()['detection']
 PHOSPHOR_DETECTION_BATCH_SIZE = get_batch_info()['state_test']
 BROKEN_DETECTION_BATCH_SIZE = get_batch_info()['broken_test']
 CONE_DETECTION_BATCH_SIZE = get_batch_info()['segmentation']
-FOG_DETECTION_BATCH_SIZE = get_batch_info()['segmentation']
+FOG_DETECTION_BATCH_SIZE = get_batch_info()['detection']
 
 
 class FRAME_TAG(enum.Enum):
@@ -145,10 +145,9 @@ class Sectionalizer:
         self.section = None
         return not self.is_unfinished, ret
 
-    def add_frame(self, tag: FRAME_TAG, idx: int, msec: float, frame: np.ndarray, video_type: str) -> None:
-        # 如果是最后一帧，跳转至parse函数
+    def add_frame(self, tag: FRAME_TAG, idx: int, msec: float, frame: np.ndarray) -> None:
         if idx < 0:
-            self._finish(video_type=video_type)
+            self._finish()
             return
 
         if tag == FRAME_TAG.DETECT_LATER:
@@ -161,8 +160,7 @@ class Sectionalizer:
             if len(self.immediate_frames) == SCREEN_DETECTION_BATCH_SIZE:
                 ans = detect_screen_with_batch([
                     frame for _, _, frame in self.immediate_frames
-                ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres) if video_type == 'tv' else [('fog') for _ in range(
-                    SCREEN_DETECTION_BATCH_SIZE)]
+                ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres)
 
                 # 如果新开始检测一个批次帧 且 检测到了屏面玻璃
                 if self.state == self.State.OUT_OF_SECTION:
@@ -183,7 +181,7 @@ class Sectionalizer:
                     if self._section_is_over():
                         self.state = self.State.OUT_OF_SECTION
 
-                        self.parse(video_type=video_type, is_over=True)
+                        self.parse(is_over=True)
 
                         self.immediate_frames.clear()
                         self.deferred_frames.clear()
@@ -195,7 +193,7 @@ class Sectionalizer:
 
                 # 判断当前缓存是否已满
                 if len(self.section_info[0]) + len(self.section_info[1]) >= SCREEN_DETECTION_CACHE_MAXIMUM:
-                    self.parse(is_over=False, video_type=video_type)
+                    self.parse(is_over=False)
 
     def add_frame_fog(self, tag: FRAME_TAG, idx: int, msec: float, frame: np.ndarray, video_type: str) -> None:
         if idx < 0:
@@ -244,12 +242,11 @@ class Sectionalizer:
                 if len(self.section_info[0]) + len(self.section_info[1]) >= SCREEN_DETECTION_CACHE_MAXIMUM:
                     self.parse_fog(is_over=False, video_type=video_type)
 
-    def _finish(self, video_type: str) -> None:
+    def _finish(self) -> None:
         # 对最后一个需要检测的帧重复add_frame中的操作
         ans = detect_screen_with_batch([
             frame for _, _, frame in self.immediate_frames
-        ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres) if video_type == 'tv' else [('fog') for _ in
-                                                                                     range(len(self.immediate_frames))]
+        ], SCREEN_DETECTION_BATCH_SIZE, self.conf_thres)
 
         if self.state == self.State.IN_SECTION or self._found_screen(ans):
             self.section_info[0].extend(self.immediate_frames)
@@ -259,7 +256,7 @@ class Sectionalizer:
 
             self.state = self.State.OUT_OF_SECTION
 
-            self.parse(is_over=True, video_type=video_type)
+            self.parse(is_over=True)
 
         self.immediate_frames.clear()
         self.deferred_frames.clear()
@@ -271,7 +268,7 @@ class Sectionalizer:
         tail_frames = SCREEN_DETECTION_TAIL_TIME * SCREEN_DETECTION_FREQUENCY
         return not self._found_screen(self.section_detect_flags[- tail_frames:])
 
-    def parse(self, video_type: str, is_over: bool = True) -> None:
+    def parse(self, is_over: bool=True) -> None:
         self.ready = True
 
         detected_frames = self.section_info[0]
@@ -330,7 +327,7 @@ class Sectionalizer:
             (frame for _, _, frame in additional_frames),
             SCREEN_DETECTION_BATCH_SIZE,
             self.conf_thres
-        ) if video_type == 'tv' else [('fog') for _ in range(len(additional_frames))]
+        )
 
         for (frame_no, msec, frame), bbox in zip(additional_frames, ans):
             section.append((frame_no, msec, frame, bbox))
@@ -463,7 +460,7 @@ class Classifier:
         frame_amount = len(psection)
         for frame_idx, (frame_no, msec, frame, bbox) in enumerate(psection):
             is_last_frame = frame_idx + 1 == frame_amount and (
-                    is_over or self.detector is not None
+                is_over or self.detector is not None
             )
             # 判断是否有碎屏和荧光粉残留
             self._push_frame(frame_no, frame, bbox, is_last_frame)
@@ -505,7 +502,7 @@ class Classifier:
                               segment_ans if segment_ans is None else segment_ans[0])
 
     # 根据每一帧保存的检测结果进行最后的判断并输出
-    def classify(self) -> Tuple[int, int, SECTION_CATEGORY, float, np.ndarray, int, float]:
+    def classify(self) -> Tuple[Any, Any, Any, Any, SECTION_CATEGORY, Any, Optional[Any], Any, Any]:
         # 判断是否碎屏
         is_broken, broken_frame_no = self._broken_examination()
         is_broken = False
@@ -595,7 +592,7 @@ class Classifier:
             self.fog_frame_cache.push(frame_no, frame)
             if self.fog_frame_cache.is_full() or frame_idx + 1 == len(self.fog_tail_frames) or is_last_frame:
                 # 判断漏氟残留-------------------->
-                fog_batch_ans = segment_fog_with_batch(self.fog_frame_cache.frames(), FOG_DETECTION_BATCH_SIZE)
+                fog_batch_ans = detect_fog_with_batch(self.fog_frame_cache.frames(), FOG_DETECTION_BATCH_SIZE)
                 fog_batch_ans = [(mask, np.sum(mask) // 255) for mask in fog_batch_ans]
                 fog_cache_results = self.fog_frame_cache.join_nones(fog_batch_ans, clear=True)
                 self.fog_detection_results.extend(fog_cache_results)
@@ -612,7 +609,7 @@ class Classifier:
 
                 if self.fog_frame_cache.is_full() or idx + 1 == len(self.fog_tail_frames):
                     # 判断锥屏是否分离-------------------->
-                    fog_batch_ans = segment_fog_with_batch(self.fog_frame_cache.frames(), FOG_DETECTION_BATCH_SIZE)
+                    fog_batch_ans = detect_fog_with_batch(self.fog_frame_cache.frames(), FOG_DETECTION_BATCH_SIZE)
                     fog_batch_ans = [(mask, np.sum(mask) // 255) for mask in fog_batch_ans]
                     fog_cache_results = self.fog_frame_cache.join_nones(fog_batch_ans, clear=True)
                     self.fog_detection_results.extend(fog_cache_results)
@@ -725,13 +722,11 @@ class Classifier:
             return 0, frame_no
 
     def _cone_residue_examination(self) -> bool:
-        cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in
-                    self.cone_detection_results]
+        cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in self.cone_detection_results]
         tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
         sub_res = cone_res[-tail_range:]
         cone_max_len, cone_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1])
-        not_cone_max_len, not_cone_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1] == 0 if ans[
-                                                                                                                     1] is not None else None)
+        not_cone_max_len, not_cone_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1] == 0 if ans[1] is not None else None)
 
         if cone_max_len > not_cone_max_len and cone_max_len >= SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO:
             while sub_res[cone_last][1] is None:
