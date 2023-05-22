@@ -272,7 +272,7 @@
                     let unrepeated = true
                     await this.$store.dispatch('fileChangeA', [files[i], this.$store.state.videoType]).then(res=>{
                         unrepeated = res
-                        console.log('该文件是否还未在列表中？', unrepeated)
+                        // console.log('该文件不在列表中？', unrepeated)
                     })
 
                     // 将不重复的文件发送到后端进行上传
@@ -308,6 +308,16 @@
             deleteVideo(i){
                 console.log('删除视频文件', this.files[i].name)
                 this.$store.commit('deleteVideo', [i, this.$store.state.videoType])
+                // TODO:根据给定的i与type删除指定的视频文件
+                this.axios({
+                    method:'post',
+                    url:'/video/delete',
+                    data:{'idx':i, 'type':this.$store.state.videoType}
+                }).then(res=>{
+                    console.log(res)
+                }).catch(err=>{
+                    console.log(err)
+                })
             },
 
             // 以下是审计人员信息处理函数

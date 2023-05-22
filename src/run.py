@@ -135,6 +135,13 @@ def addVideo(file, video_type):
 
     controller.add_video(file_path)
 
+# TODO：删除视频列表中的文件
+@app.route('/video/delete', methods=['post'])
+def deleteVideo():
+    params = request.get_json(silent=True)
+    i, type = params['idx'], params['type']
+    # print(i, type)
+    return '删除{}视频文件{}'.format(i, type)
 
 @app.route('/result', methods=['get'])
 def getResults():
