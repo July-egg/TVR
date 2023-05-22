@@ -8,7 +8,7 @@
     "detection_weight": "mbest",
     "detection_weight_yolov7": "best",
     "valid_weight": "280782_model_best",
-    "state_weight": "model_best",
+    "state_weight": "802311_model_best",
     "segmentation_weight": "CE_Net_276_8",
     "fog_weight": "bbox_mAP_epoch_250",
     "last_video_dir": "C:\\Users\\jyh\\Desktop\\TVR\\video",

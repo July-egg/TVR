@@ -18,24 +18,19 @@
               text-color="#fff"
               active-text-color="#ffd04b">
 
-              <el-menu-item index="1" style="font-size: 18px; height: 56px; width: 150px; justify-content: center;align-content: space-around;">
-                <i class="el-icon-menu"></i>
-                <span slot="title">首页</span>
-              </el-menu-item>
-
-              <el-submenu index="2" style="font-size: 18px; width: 150px;">
+              <el-submenu index="1" style="font-size: 18px; width: 150px;">
                 <template slot="title" style="font-size: 18px; width: 150px;line-height: 45px;">
                   <i class="el-icon-video-play" style="font-size: 18px;"></i>
                   <span style="font-size: 18px;">视频检测</span>
                 </template>
                 <el-menu-item-group style="width: 150px">
                   <template slot="title" style="display: none;"></template>
-                  <el-menu-item index="2-1" style="font-size: 14px; width: 150px; height: 45px; ">空调漏氟检测</el-menu-item>
-                  <el-menu-item index="2-2" style="font-size: 14px; width: 150px; height: 45px; ">电视机质量检测</el-menu-item>
+                  <el-menu-item index="1-1" style="font-size: 14px; width: 150px; height: 45px; ">空调漏氟检测</el-menu-item>
+                  <el-menu-item index="1-2" style="font-size: 14px; width: 150px; height: 45px; ">电视机质量检测</el-menu-item>
                 </el-menu-item-group>
               </el-submenu>
 
-              <el-menu-item index="3" style="font-size: 18px; height: 56px; width: 150px;">
+              <el-menu-item index="2" style="font-size: 18px; height: 56px; width: 150px;">
                 <i class="el-icon-document"></i>
                 <span slot="title">结果统计</span>
               </el-menu-item>
@@ -45,9 +40,9 @@
 
         <!--    主体内容    -->
         <el-main>
-          <home v-if="page== '1'"></home>
-          <result v-else-if="page=='3'"></result>
-          <fog v-else-if="page=='2-1'"></fog>
+<!--          <home v-if="page== '1'"></home>-->
+          <result v-if="page=='2'"></result>
+          <fog v-else-if="page=='1-1'"></fog>
           <tv v-else></tv>
         </el-main>
       </el-container>

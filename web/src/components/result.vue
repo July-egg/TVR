@@ -3,16 +3,16 @@
         <div class="left">
             <div class="video" style="height: 100%; width: 645px;margin: 0;">
                 <!--     打开视频文件页面      -->
-                <div @click="btnChange('file')" style="width:100%; height:100%; object-fit:fill; display: flex;
-                     box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);" v-if="htmlEmpty">
-                    <input type="file" id="file" hidden @change="fileChange" accept="text/html" multiple="multiple">
-                    <div style="display: flex; justify-content: space-around; align-content: center;margin: auto;">
-                        <i class="el-icon-plus" style="font-size: 40px; line-height: 45px;"></i>
-                        <span style="font-size: 40px; line-height: 45px;">&nbsp;&nbsp;打开结果文件</span>
-                    </div>
-                </div>
+<!--                <div @click="btnChange('file')" style="width:100%; height:100%; object-fit:fill; display: flex;-->
+<!--                     box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);" v-if="htmlEmpty">-->
+<!--                    <input type="file" id="file" hidden @change="fileChange" accept="text/html" multiple="multiple">-->
+<!--                    <div style="display: flex; justify-content: space-around; align-content: center;margin: auto;">-->
+<!--                        <i class="el-icon-plus" style="font-size: 40px; line-height: 45px;"></i>-->
+<!--                        <span style="font-size: 40px; line-height: 45px;">&nbsp;&nbsp;打开结果文件</span>-->
+<!--                    </div>-->
+<!--                </div>-->
 
-                <div class="else" style="width:100%; height:650px; object-fit:fill;" v-else>
+                <div class="res" style="width:100%; height:650px; object-fit:fill;">
                     <div style="line-height: 35px; font-size: 20px; height: 35px; text-overflow: ellipsis; width: 100%;">
                         <b>当前结果文件:&nbsp;</b>空调二线抽氟工位_16B27158_1669259154_1.mp4
                     </div>
