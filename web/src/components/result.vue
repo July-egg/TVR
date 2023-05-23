@@ -1,42 +1,52 @@
 <template>
     <div class="wrap">
         <div class="left">
-            <div class="video" style="height: 100%; width: 645px;margin: 0;">
-                <!--     打开视频文件页面      -->
-<!--                <div @click="btnChange('file')" style="width:100%; height:100%; object-fit:fill; display: flex;-->
-<!--                     box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);" v-if="htmlEmpty">-->
-<!--                    <input type="file" id="file" hidden @change="fileChange" accept="text/html" multiple="multiple">-->
-<!--                    <div style="display: flex; justify-content: space-around; align-content: center;margin: auto;">-->
-<!--                        <i class="el-icon-plus" style="font-size: 40px; line-height: 45px;"></i>-->
-<!--                        <span style="font-size: 40px; line-height: 45px;">&nbsp;&nbsp;打开结果文件</span>-->
-<!--                    </div>-->
-<!--                </div>-->
+            <div style="line-height: 25px; font-size: 18px; height: 25px; text-overflow: ellipsis; width: 100%;">
+                <b>当前结果文件:&nbsp;</b>{{present}}
+            </div>
 
-                <div class="res" style="width:100%; height:650px; object-fit:fill;">
-                    <div style="line-height: 35px; font-size: 20px; height: 35px; text-overflow: ellipsis; width: 100%;">
-                        <b>当前结果文件:&nbsp;</b>空调二线抽氟工位_16B27158_1669259154_1.mp4
-                    </div>
-                     <iframe :src="present" style="width:100%; height:100%; object-fit:fill;" scrolling="auto"></iframe>
-<!--                     <iframe src="/static/summary.html" style="width:100%; height:100%; object-fit:fill;" scrolling="auto"></iframe>-->
-                </div>
+            <div class="html" style="width: 100%;height: 495px; line-height: 495px;">
+                <table class="details" style="display: block; padding: 15px;">
+                    <tr v-for="(value, key) in details">
+                      <td class="key">{{key}}:</td>
+                      <td class="value">{{value}}</td>
+                    </tr>
+                </table>
+
+                <table class="result" style="display: block; padding-left: 15px;">
+                    <tr>
+                        <th>序号</th>
+                        <th>操作时间段</th>
+                        <th>操作时间点</th>
+                        <th>视频时间点</th>
+                        <th>系统判断结果</th>
+                        <th>判断图像</th>
+                    </tr>
+                    <tr>
+                        <td v-for="res in results" >{{res}}</td>
+                        <td><img src="" alt="无图像"></td>
+                    </tr>
+                </table>
             </div>
         </div>
 
         <div class="right">
-            <div style="line-height: 25px; font-size: 18px; display: flex; justify-content: space-between;">
+            <div style="line-height: 25px; font-size: 18px; height: 25px; display: flex; justify-content: space-between;">
                 <b>当前文件列表</b>
-<!--                <el-button type="primary" icon="el-icon-plus" @click="btnChange('files')"-->
-<!--                  style="font-size: 15px; height: 25px; width:30px; border-radius: 10px; padding: 0;border: none;"></el-button>-->
             </div>
-            <div class="files" style="margin: 0; overflow: scroll; width: 100%; height: 495px;
+
+            <div class="files" style="margin: 0; overflow: scroll; width: 100%; height: 470px;
                  box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);">
-                <input type="file" id="files" hidden @change="fileChange" webkitdirectory>
-                <div class="each" v-for="f in files" style="height: 25px; line-height: 25px; font-size: 18px;">
-                    <div :class="f['idx'] == presentIdx? 'chosen': 'unchosen'">
-                        <span style="line-height: 25px; white-space: nowrap;" v-if="f['idx'] == presentIdx">{{f['name']}}</span>
-                        <span style="line-height: 25px; white-space: nowrap;" v-else @click="presentChange(f)">{{f['name']}}</span>
+                <div class="each" v-for="(f,i) in fileNames" style="height: 25px; line-height: 25px; font-size: 18px;">
+                    <div :class="i == presentIdx? 'chosen': 'unchosen'">
+                        <span style="line-height: 25px; white-space: nowrap;" v-if="i == presentIdx">{{f}}</span>
+                        <span style="line-height: 25px; white-space: nowrap;" v-else @click="presentChange(f, i)">{{f}}</span>
                     </div>
                 </div>
+            </div>
+
+            <div style="line-height: 25px; height: 25px; display: flex; justify-content: center;">
+                <el-button type="primary" round @click="exportExcel">导出excel文件</el-button>
             </div>
         </div>
     </div>
@@ -47,108 +57,60 @@
         name: "result",
         data(){
             return{
-                id:'file'
+                id:'file',
             }
         },
         methods:{
-            fileChange(e) {
-              try {
-                const fu = document.getElementById(this.id)
-                if (fu == null) return
-
-                //  如果是选择单个文件，则根据文件类型进行页面跳转，同时更新最近的文件
-                if(this.id == 'file'){
-                    var files = fu.files
-                    console.log(files)
-
-                    for(let i = 0; i < files.length; i++){
-                        var mfile = files[i]
-                        let url = window.webkitURL.createObjectURL(mfile) ;
-                        mfile['url'] = url
-                        this.$store.commit('fileChange', mfile)
-                    }
-                }
-                // 打开文件夹
-                else
-                {
-                    var files = [];
-
-                    for(let index = 0; index < fu.files.length; index++){
-                        if(fu.files[index].type == "text/html")
-                        {
-                            let url = window.webkitURL.createObjectURL(fu.files[index]) ;
-                            fu.files[index]['url'] = url
-                            files.push(fu.files[index])
-                        }
-                    }
-                    console.log(files)
-                    this.$store.commit('folderChange', files)
-                }
-              }
-              catch (error) {
-                console.debug('choice file err:', error)
-              }
-            },
-            btnChange(id) {
-                // 打开文件夹页面进行选择
-                this.id = id
-                var file = document.getElementById(id)
-                file.click()
-            },
-            presentChange(f){
+            presentChange(f, i){
                 console.log('当前结果文件发生切换')
-                console.log(f)
-                this.$store.commit('presentHtmlChange', f)
+                this.$store.commit('presentResultChange', [f, i])
+                this.getResult(this.present)
             },
-            getResults(){
-                const blob = new Blob([response.data], {'type': 'text/html'})
-                const blobUrl = window.URL.createObjectURL(blob)
-                this.$store.commit('htmlSrcChange', blobUrl)
-                console.log(blobUrl)
+
+            // TODO:从后台根据文件名获取指定结果信息
+            getResult(name){
+                console.log('尝试获取结果文件:'+name)
+                this.axios({
+                    method:'post',
+                    url:'/result',
+                    data:{'name': name}
+                }).then(res=>{
+                    console.log(res.data)
+                    this.$store.commit('presentResultInfoChange', [res.data.details, res.data.results])
+                }).catch(err=>{
+                    console.log(err)
+                })
+            },
+
+            // TODO：导出excel文件接口（向后端发送请求，参数：当前结果文件name）
+            exportExcel(){
+              console.log('导出excel文件')
             },
         },
         computed:{
-            // 当前视频文件
             present(){
-                console.log(this.$store.state.presentHtml)
-                return this.$store.state.presentHtml
+                console.log(this.$store.state.presentResult)
+                return this.$store.state.presentResult
             },
             presentIdx(){
-                return this.$store.state.presentHtmlIdx
+                return this.$store.state.presentResultIdx
             },
-            files:{
-                get(){
-                    return this.$store.state.htmlList
-                },
+            fileNames(){
+                return this.$store.state.resultList
             },
-            htmlEmpty(){
-                    // return false
-                    return this.$store.state.presentHtml == null
+            details(){
+                return this.$store.state.presentResultInfo['details']
             },
-            htmlSrc(){
-                // this.axios({
-                //     method:"get",
-                //     url:'/result',
-                // })
-                // .then((response) => {
-                //     console.log(response)
-                // })
-                // .catch((error) => {
-                //     console.log(error)
-                // })
+            results(){
+                return this.$store.state.presentResultInfo['results']
+            }
 
-
-                // return this.$store.state.htmlSrc
-            },
-
-        },
-        watch:{
-            htmlSrc(newVal, oldVal){
-                console.log('htmlSrc被修改了', oldVal, newVal)
-            },
         },
         created() {
-
+            // 当打开结果界面时，从后端获取当前结果文件
+            if(this.fileNames.length > 0){
+                this.getResult(this.present)
+            }
         }
     }
 </script>
@@ -161,11 +123,9 @@
 }
 
 .left{
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
+    /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
     width: 645px;
     height: 520px;
-    /*background-color: #666666;*/
-    /*overflow-scrolling: auto;*/
 }
 
 .right{
@@ -202,4 +162,39 @@
     margin: 1px 0;
     border-color: white;
 }
+
+table {
+    border-collapse: collapse;
+}
+
+.detail td, .detail th {
+    padding: 4px;
+}
+
+.key {
+    font-weight: bold;
+    text-align: right;
+    height: 25px;
+    line-height: 25px;
+    font-size: 16px;
+}
+
+.value{
+    text-align: right;
+    line-height: 25px;
+    font-size: 16px;
+}
+
+.result td, .result th {
+    border: 1px solid #efefef;
+    text-align: left;
+    padding: 8px;
+    height: 40px;
+    line-height: 40px;
+}
+
+img {
+    width: 400px;
+}
+
 </style>

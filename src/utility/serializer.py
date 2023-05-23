@@ -74,7 +74,16 @@ class HtmlSerializer:
             ('文档生成时间', datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
         ])
 
-        results = self._results(fps, date_time, items)
+        detail = [
+            ('检查人', executor),
+            ('视频文件', Path(videopath).name),
+            ('工位', workstation),
+            ('视频录制时间', date_time.strftime('%Y/%m/%d %H:%M:%S')),
+            ('备注', memo),
+            ('文档生成时间', datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
+        ]
+
+        results, result = self._results(fps, date_time, items)
 
         title = Path(videopath).stem
 
@@ -89,6 +98,8 @@ class HtmlSerializer:
 
         with open(path.join(save_dir, 'summary.html'), 'w', encoding='utf-8') as f:
             f.write(file_content)
+
+        return detail, result
 
     def _details(self, kvs: List[Tuple[str, str]]) -> str:
         lines = []
@@ -116,6 +127,7 @@ class HtmlSerializer:
             '</tr>'
         ]
 
+        res = [('序号', '操作时间段', '操作时间点', '视频时间点', '系统判断结果', '判断图像')]
         for i, (frame_start, frame_end, start_msec, end_msec, section_category, cone_percentage, frame_path, frame_no, frame_msec) in enumerate(items):
             video_start, video_end = seconds_to_hms(start_msec / 1000, use_round=True), seconds_to_hms(end_msec / 1000, use_round=True)
 
@@ -150,10 +162,11 @@ class HtmlSerializer:
                 f'  <td><img src="{frame_path}" alt="无图像" /></td>',
                 '</tr>'
             ])
+            res.push((i+1, operation_start-operation_end, operation_time_point, seconds_to_hms(frame_msec / 1000, use_round=True), result))
 
         results = '\n'.join(f'        {line}' for line in lines)
 
-        return results
+        return results, res
 
 
 class JsonSerializer:
@@ -331,4 +344,7 @@ class ResultSerializer:
         xls_path = path.abspath(path.join(src_dir, f'{xls_name}.xls')).replace('\\', '/')
 
         html_serializer = HtmlSerializer(xls_path)
-        html_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, items)
+        detail, result = html_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, items)
+
+        return detail, result
+

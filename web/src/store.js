@@ -36,9 +36,16 @@ const state = {
     },
 
     // result页面需要保存的变量
-    htmlList:[], // 记录当前视频文件列表
-    presentHtml: null, // 当前json文件，跳转到结果统计页面
-    presentHtmlIdx: -1, // 当前json文件在文件列表中的索引
+    resultList:[], // 检测结果文件列表,air与fog的一起，只保存文件的名字
+    presentResultInfo:{'details':{
+                        '检查人':'',
+                        '视频文件':'',
+                        '工位':'',
+                        '视频录制时间':'',
+                        '备注':'',
+                        '文档生成时间':'',},'results':['','','','','']}, // 当前结果文件的信息，用于在html中进行展示[{'details':{}, 'results':[]}, ...]
+    presentResult: '',
+    presentResultIdx: -1, // 当前结果文件在列表中的索引
 }
 
 // mutations：定义一些方法(默认传入一个state参数)，对状态进行修改
@@ -102,14 +109,6 @@ const mutations = {
         // 审计人员信息保存
         state.audit[type] = val
     },
-    // folderChange(state, f){
-    //     // 更新当前视频列表文件夹，之前已经打开的视频文件被覆盖，仅限视频检测页面使用
-    //     state.presentFolder = f
-    //     state.videoList = f
-    //     state.presentVideo = f[0]
-    //     state.presentVideoIdx = 0
-    //     this.commit('recentChange', f)
-    // },
     fileChange(state, [f, type]) {
         // 将视频文件根据类型添加到对应的列表中
         if(type == 'tv'){
@@ -153,21 +152,19 @@ const mutations = {
         }
     },
 
-
     // result页面
-    htmlChange(state, [url, name, type, time]){
-        // 新增html文件
-        console.log('新增结果html文件:', name)
-        state.presentHtml = url
-        state.presentHtmlIdx = state.htmlList.length
-        var f = {'url':url, 'name':name, 'type':type, 'idx':state.presentHtmlIdx, 'time':time}
-        state.htmlList.push(f)
-        state.recentFiles.push(f)
+    presentResultChange(state, [f,i]){
+        state.presentResult = f
+        state.presentResultIdx = i
     },
-    presentHtmlChange(state, f){
-        // 当前结果html文件的webkitURL地址
-        state.presentHtml = f['url']
-        state.presentHtmlIdx = f['idx']
+    addResult(state, name){
+        state.resultList.push(name)
+        state.presentResult = name
+        state.presentResultIdx = state.resultList.length - 1
+    },
+    presentResultInfoChange(state, [details, results]){
+        state.presentResultInfo['details'] = details
+        state.presentResultInfo['results'] = results
     }
 
 }
@@ -191,6 +188,13 @@ const actions = {
             context.commit('fileChange', [f, type])
         }
         return true
+    },
+    addResultA(context, name){
+        if(state.resultList.find(function (val){return val == name})) {
+            alert('视频'+name+'已经检测过！')
+            return
+        }
+        context.commit('addResult', name)
     }
 }
 

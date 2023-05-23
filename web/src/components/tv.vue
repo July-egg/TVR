@@ -160,7 +160,6 @@
                 let formdata = new FormData();
                 formdata.append('type', this.detectType)
                 formdata.append('idx', this.presentIdx)
-                formdata.append('dest_dir', './results')
 
                 for (var key in this.audit){
                     // console.log(key, this.audit[key])
@@ -168,26 +167,24 @@
                 }
 
                 for(var k in this.files){
-                        formdata.append('files[]', this.files[k])
-                        // console.log(this.files[k])
-                    }
+                    formdata.append('files[]', this.files[k])
+                }
 
-                const config = {
-                    headers: {
-                      'Content-Type': 'multipart/form-data'
-                    }
-                  }
+                const config = {headers: {'Content-Type': 'multipart/form-data'}}
 
                 var name = this.files[this.presentIdx]['name'].split('.')[0]
-                var date = new Date()
-                var time = String(date.getFullYear())+"/"+String(date.getMonth())+'/'+String(date.getDate())
 
                 this.axios.post('/video/detect', formdata, config)
                 .then((response) => {
-                    // console.log(response.data)
-                    const blob = new Blob([response.data], {'type': 'text/html'})
-                    const blobUrl = window.URL.createObjectURL(blob)
-                    this.$store.commit('htmlChange', [blobUrl, name, 'text/html', time])
+                    console.log(response)
+                    if(response.data == 'error'){
+                        console.error('视频' + name +'检测失败')
+                        alert('视频' + name +'检测失败')
+                    }else{
+                        this.$store.dispatch('addResultA', name)
+                    }
+                    // const blob = new Blob([response.data], {'type': 'text/html'})
+                    // const blobUrl = window.URL.createObjectURL(blob)
                 })
                 .catch((error) => {
                     console.log(error)
@@ -217,11 +214,7 @@
                     return
                 }
 
-                const config = {
-                    headers: {
-                      'Content-Type': 'multipart/form-data'
-                    }
-                }
+                const config = {headers: {'Content-Type': 'multipart/form-data'}}
 
                 // 变量当前视频文件列表，依次进行检测并获取检测结果html
                 for(var i = 0; i < this.files.length; i++){
@@ -229,7 +222,6 @@
                     let formdata = new FormData();
                     formdata.append('type', this.detectType)
                     formdata.append('idx', i)
-                    formdata.append('dest_dir', './results')
                     for (var key in this.audit){
                         // console.log(key, this.audit[key])
                         formdata.append('audit[]', this.audit[key])
@@ -240,16 +232,15 @@
                     }
 
                     var name = this.files[i]['name'].split('.')[0]
-                    var date = new Date()
-                    var time = String(date.getFullYear())+"/"+String(date.getMonth())+'/'+String(date.getDate())
 
                     await this.axios.post('/video/detect', formdata, config)
                     .then((response) => {
-                        // console.log(this.files)
-                        const blob = new Blob([response.data], {'type': 'text/html'})
-                        const blobUrl = window.URL.createObjectURL(blob)
-
-                        this.$store.commit('htmlChange', [blobUrl, name, 'text/html', time])
+                        if(response.data == 'error'){
+                            console.error('视频' + name +'检测失败')
+                            alert('视频' + name +'检测失败')
+                        }else{
+                            this.$store.dispatch('addResultA', name)
+                        }
                     }).catch((error) => {
                         console.log(error)
                     })
@@ -271,8 +262,8 @@
                     files[i]['url'] = url
                     let unrepeated = true
                     await this.$store.dispatch('fileChangeA', [files[i], this.$store.state.videoType]).then(res=>{
-                        unrepeated = res
                         // console.log('该文件不在列表中？', unrepeated)
+                        unrepeated = res
                     })
 
                     // 将不重复的文件发送到后端进行上传

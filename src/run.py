@@ -2,8 +2,8 @@ from flask import Flask, make_response, request, send_file, jsonify, Response
 from flask_cors import CORS  # 解决跨域的问题
 import os
 from pathlib import Path
-import base64
 import time
+import json
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -22,7 +22,7 @@ def _examine_videos(dest_dir, indexes, controller) -> bool:
     has_examined_video = False
 
     for idx in indexes:
-        handler = controller.model.get(idx)
+        handler = controller.viewmodel.get(idx)
         if handler.is_examined():
             has_examined_video = True
 
@@ -65,7 +65,7 @@ async def detectOne():
 
     if video_type == 'fog':
         # 如果当前视频序列为空，则将files添加进去
-        if len(controller.model._video_handlers) == 0:
+        if len(controller.viewmodel._video_handlers) == 0:
             print('当前视频序列为空，将files添加进去')
             for f in files:
                 addVideo(f, video_type)
@@ -76,11 +76,11 @@ async def detectOne():
         # 对单个视频文件进行检测
         on_examine_one_video(dest_dir, idx, controller, video_type)
 
-        res = open(dest_dir + '/' + Path(controller.model.get(idx).video_path()).stem + '/summary.html', 'rb')
+        res = open(dest_dir + '/' + Path(controller.viewmodel.get(idx).video_path()).stem + '/summary.html', 'rb')
         return Response(res, mimetype='text/html')
     else:
         # 如果当前视频序列为空，则将files添加进去
-        if len(controller.model._video_handlers) == 0:
+        if len(controller.viewmodel._video_handlers) == 0:
             print('当前视频序列为空，将files添加进去')
             for f in files:
                 addVideo(f, video_type)
@@ -89,13 +89,14 @@ async def detectOne():
         controller.set_video_details(idx, audit)
 
         # 对单个视频文件进行检测
-        has_examined_video = on_examine_one_video(dest_dir, idx, controller, video_type)
+        # has_examined_video = on_examine_one_video(dest_dir, idx, controller, video_type)
+        has_examined_video = True
 
         print('是否检测完成：', has_examined_video)
 
         # TODO 把被动返回检测结果变成get_result用户主动拉取
         if has_examined_video:
-            summary_path = dest_dir + '/' + Path(controller.model.get(idx).video_path()).stem + '/summary.html'
+            summary_path = dest_dir + '/' + Path(controller.viewmodel.get(idx).video_path()).stem + '/summary.html'
             print(summary_path)
             wait_time = 10
             while wait_time > 0:
@@ -119,7 +120,6 @@ def add():
     print('已经将视频{}加入列表'.format(file.filename))
     return '已经将{}加入视频列表'.format(file.filename)
 
-
 def addVideo(file, video_type):
     buffer_video = file.read()
 
@@ -135,7 +135,8 @@ def addVideo(file, video_type):
 
     controller.add_video(file_path)
 
-# TODO：删除视频列表中的文件
+
+# TODO：删除视频列表中的文件,在viewmodel类中需要写对应的函数
 @app.route('/video/delete', methods=['post'])
 def deleteVideo():
     params = request.get_json(silent=True)
@@ -143,19 +144,29 @@ def deleteVideo():
     # print(i, type)
     return '删除{}视频文件{}'.format(i, type)
 
-@app.route('/result', methods=['get'])
-def getResults():
-    res = {
-        'files': [],
-        'other': '这是其它信息'
-    }
-    # a = Response(open('./results/屏锥玻璃2号工位_29D6E130_1669338406_1/summary.html', 'rb').read(), mimetype='text/html')
 
-    res['files'].append('a')
-    res['files'].append('b')
-    return jsonify(res)
+# TODO:根据视频文件名读取对应结果文件夹中的json文件，将其中的信息返回
+@app.route('/result', methods=['post'])
+def getResults():
+    data = request.get_json(silent=True)
+    name = data['name']
+    print('需要获取的文件名:'+name)
+
+    data = {
+        'details':{
+            '检查人':'1',
+            '视频文件':'2',
+            '工位':'2',
+            '视频录制时间':'3',
+            '备注':'3',
+            '文档生成时间':'5',
+        },
+        'results':[1,2,3,4,5]
+    }
+
+    return Response(json.dumps(data), mimetype='application/json')
+    # return jsonify(data)
     # return send_file('./results/屏锥玻璃2号工位_29D6E130_1669338406_1/summary.html', mimetype='text/html')
-    # return make_response()
 
 
 parser = argparse.ArgumentParser()
@@ -177,7 +188,7 @@ if __name__ == '__main__':
     #     messagebox.showinfo("提示", "请先选择检测结果保存的文件夹")
     #     dest_dir = filedialog.askdirectory()  # 选择文件夹
     #     print('\n检测结果保存地址：', dest_dir)
-    dest_dir = 'D:/screenproject/TVR/src/results'
+    dest_dir = './results'
     app.run(host='127.0.0.1', port=5000)
 
     # controller.exit(kill_all=args.kill_all_when_exit)
