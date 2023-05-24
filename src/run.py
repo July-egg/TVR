@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import time
 import json
+import base64
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -14,7 +15,8 @@ from viewmodel_backend import VideoHandler, ViewModel
 from utility import config
 import argparse
 
-# 对视频进行检测的函数
+dest_dir = ''
+
 def _examine_videos(dest_dir, indexes, controller) -> bool:
     # 获取上一次的保存地址
     print(dest_dir)
@@ -29,8 +31,6 @@ def _examine_videos(dest_dir, indexes, controller) -> bool:
     print('has_examined_video:', has_examined_video)
     return has_examined_video
 
-
-# 检测单个视频的函数
 def on_examine_one_video(dest_dir, idx, controller, video_type) -> bool:
     # 检测单个视频时，先判断是否已经质检过一次，是的话让用户进行选择
     if dest_dir:
@@ -46,9 +46,6 @@ def on_examine_one_video(dest_dir, idx, controller, video_type) -> bool:
                 print('检测出错！')
                 return False
             return True
-
-
-dest_dir = ''
 
 
 @app.route('/video/detect', methods=['post'])
@@ -102,7 +99,8 @@ async def detectOne():
             while wait_time > 0:
                 if os.path.isfile(summary_path):
                     res = open(summary_path, 'rb')
-                    return Response(res, mimetype='text/html')
+                    return Response('success')
+                    # return Response(res, mimetype='text/html')
                 else:
                     wait_time -= 1
                     print('未检测到结果文件,继续检测%d次'.format(wait_time))
@@ -111,7 +109,6 @@ async def detectOne():
             return Response('error')
 
 
-# 将视频文件添加到viewmodel中
 @app.route('/video/add', methods=['post'])
 def add():
     file = request.files.getlist('files[]')[0]
@@ -145,28 +142,101 @@ def deleteVideo():
     return '删除{}视频文件{}'.format(i, type)
 
 
-# TODO:根据视频文件名读取对应结果文件夹中的json文件，将其中的信息返回
-@app.route('/result', methods=['post'])
+@app.route('/result/info', methods=['post'])
 def getResults():
     data = request.get_json(silent=True)
     name = data['name']
-    print('需要获取的文件名:'+name)
+    json_path = dest_dir + '/' + name + '/summary.json'
+    print('json文件路径:' + json_path)
 
-    data = {
-        'details':{
-            '检查人':'1',
-            '视频文件':'2',
-            '工位':'2',
-            '视频录制时间':'3',
-            '备注':'3',
-            '文档生成时间':'5',
-        },
-        'results':[1,2,3,4,5]
+    res_map = {
+        'Pass': '干净',
+        'Broken': '碎屏',
+        'ConeResidue': '锥体玻璃残留',
+        'PhosphorResidue': '荧光粉',
+        'PhosphorWater': '荧光粉(水印残留)',
+        'PhosphorWhite': '荧光粉(白印残留)'
     }
+    wait_time = 10
+    while wait_time > 0:
+        if os.path.isfile(json_path):
+            with open(json_path, 'rb') as fp:
+                json_info = json.load(fp)
 
-    return Response(json.dumps(data), mimetype='application/json')
+            data = {
+                'details': {
+                    '检查人': json_info['Examiner'],
+                    '视频文件': json_info['VideoPath'].split("\\")[-1],
+                    '工位': json_info['WorkStation'],
+                    '视频录制时间': json_info['VideoStartDateTime'],
+                    '备注': json_info['Note'],
+                    '文档生成时间': json_info['TimeStamp'],
+                },
+                'results': [
+                    [
+                        json_info['Proceduces'][i]['SectionIndex'],
+                        json_info['Proceduces'][i]['AbsoluteStartTime'] + '-' + json_info['Proceduces'][0][
+                            'AbsoluteEndTime'],
+                        json_info['Proceduces'][i]['RelativeStartTime'],
+                        json_info['Proceduces'][i]['KeyFrameTime'],
+                        res_map[json_info['Proceduces'][i]['ExaminationResult']],
+                    ] for i in range(json_info['Summary']['Total'])
+                ]
+            }
+
+            return Response(json.dumps(data), mimetype='application/json')
+        else:
+            wait_time -= 1
+            print('未检测到json文件,继续检测%d次'.format(wait_time))
+            time.sleep(10)
+    return Response('error')
+
     # return jsonify(data)
     # return send_file('./results/屏锥玻璃2号工位_29D6E130_1669338406_1/summary.html', mimetype='text/html')
+
+@app.route('/result/image', methods=['post'])
+def getImage():
+    data = request.get_json(silent=True)
+    name = data['name']
+    idx = data['idx']
+    img_path = dest_dir + '/' + name + '/images/00' + str(idx) + '.jpg'
+    print('img文件路径:' + img_path)
+    # imgs = [f for f in os.listdir(img_path) if os.path.isfile(f)]
+
+    wait_time = 10
+    while wait_time > 0:
+        if os.path.isfile(img_path):
+            # img_stream = open(img_path+img, 'rb').read()
+            # img_stream = base64.b64encode(img_stream)
+            # images.append(img_stream)
+
+            img_data = open(img_path, 'rb').read()
+            response = make_response(img_data)
+            response.headers['Content-Type'] = 'image/jpg'
+            return response
+        else:
+            wait_time -= 1
+            print('未检测到image文件,继续检测%d次'.format(wait_time))
+            time.sleep(10)
+
+    return Response('error')
+
+@app.route('/result/excel', methods=['post'])
+def getExcel():
+    data = request.get_json(silent=True)
+    name = data['name']
+    excel_path = dest_dir + '/' + name + '/__src/' + name + '.xls'
+    print('excel文件路径:' + excel_path)
+
+    wait_time = 10
+    while wait_time > 0:
+        if os.path.isfile(excel_path):
+            return send_file(excel_path, mimetype="application/vnd.ms-excel")
+        else:
+            wait_time -= 1
+            print('未检测到excel文件,继续检测%d次'.format(wait_time))
+            time.sleep(10)
+    return Response('error')
 
 
 parser = argparse.ArgumentParser()

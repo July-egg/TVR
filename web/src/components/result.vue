@@ -5,7 +5,7 @@
                 <b>当前结果文件:&nbsp;</b>{{present}}
             </div>
 
-            <div class="html" style="width: 100%;height: 495px; line-height: 495px;">
+            <div class="html" style="width: 100%;height: 495px; line-height: 495px; overflow-y: scroll;">
                 <table class="details" style="display: block; padding: 15px;">
                     <tr v-for="(value, key) in details">
                       <td class="key">{{key}}:</td>
@@ -22,9 +22,9 @@
                         <th>系统判断结果</th>
                         <th>判断图像</th>
                     </tr>
-                    <tr>
-                        <td v-for="res in results" >{{res}}</td>
-                        <td><img src="" alt="无图像"></td>
+                    <tr v-for="(res, i) in results" >
+                        <td v-for="r in res">{{r}}</td>
+                        <td><img :src="image[i]" alt="无图像"></td>
                     </tr>
                 </table>
             </div>
@@ -35,7 +35,7 @@
                 <b>当前文件列表</b>
             </div>
 
-            <div class="files" style="margin: 0; overflow: scroll; width: 100%; height: 470px;
+            <div class="files" style="margin: 0; overflow: scroll; width: 100%; height: 450px; line-height: 450px;
                  box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);">
                 <div class="each" v-for="(f,i) in fileNames" style="height: 25px; line-height: 25px; font-size: 18px;">
                     <div :class="i == presentIdx? 'chosen': 'unchosen'">
@@ -45,8 +45,8 @@
                 </div>
             </div>
 
-            <div style="line-height: 25px; height: 25px; display: flex; justify-content: center;">
-                <el-button type="primary" round @click="exportExcel">导出excel文件</el-button>
+            <div style="line-height: 25px; height: 25px; display: flex; justify-content: center; margin-top: 10px;">
+                <el-button type="primary" round @click="getExcel" style="text-align: center;">导出excel文件</el-button>
             </div>
         </div>
     </div>
@@ -68,23 +68,59 @@
             },
 
             // TODO:从后台根据文件名获取指定结果信息
-            getResult(name){
+            async getResult(name){
                 console.log('尝试获取结果文件:'+name)
                 this.axios({
                     method:'post',
-                    url:'/result',
+                    url:'/result/info',
                     data:{'name': name}
                 }).then(res=>{
-                    console.log(res.data)
                     this.$store.commit('presentResultInfoChange', [res.data.details, res.data.results])
                 }).catch(err=>{
                     console.log(err)
                 })
-            },
 
-            // TODO：导出excel文件接口（向后端发送请求，参数：当前结果文件name）
-            exportExcel(){
-              console.log('导出excel文件')
+                let imgUrl = []
+                for(let i = 0; i < this.results.length; i++){
+                    await this.axios({
+                        method:'post',
+                        url:'/result/image',
+                        data:{'name': name, 'idx':i},
+                        responseType:'blob'
+                    }).then(res=>{
+                        // const blob = new Blob([res.data], {'type': 'image/jpg'})
+                        imgUrl.push(window.URL.createObjectURL(res.data))
+                    }).catch(err=>{
+                        console.log(err)
+                    })
+                }
+                this.$store.commit('presentResultImageChange', imgUrl)
+            },
+            // TODO:根据文件名获取对应的excel文件
+            getExcel(){
+                console.log('导出excel文件：'+this.present)
+                this.axios({
+                    method:'post',
+                    url:'/result/excel',
+                    data:{'name': this.present},
+                    responseType: 'arraybuffer'
+                }).then(res=>{
+                    console.log(res.data)
+
+                    // 下载excel文件
+                    const blob = new Blob([res.data])
+                    const link = document.createElement('a')
+                    link.download = file_name // a标签添加属性
+                    link.style.display = 'none'
+                    link.href = URL.createObjectURL(blob)
+                    document.body.appendChild(link)
+                    link.click() // 执行下载
+                    URL.revokeObjectURL(link.href)  // 释放 blob 对象
+                    document.body.removeChild(link)
+
+                }).catch(err=>{
+                    console.log(err)
+                })
             },
         },
         computed:{
@@ -103,6 +139,9 @@
             },
             results(){
                 return this.$store.state.presentResultInfo['results']
+            },
+            image(){
+                return this.$store.state.presentResultImage
             }
 
         },
@@ -124,13 +163,13 @@
 
 .left{
     /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
-    width: 645px;
+    width: 700px;
     height: 520px;
 }
 
 .right{
     /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
-    width: 245px;
+    width: 200px;
     height: 520px;
     /*background-color: #B3C0D1;*/
 }
@@ -180,9 +219,10 @@ table {
 }
 
 .value{
-    text-align: right;
+    text-align: left;
     line-height: 25px;
     font-size: 16px;
+    padding-left: 5px;
 }
 
 .result td, .result th {
@@ -194,7 +234,7 @@ table {
 }
 
 img {
-    width: 400px;
+    width: 220px;
 }
 
 </style>

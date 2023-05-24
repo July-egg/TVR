@@ -141,15 +141,15 @@
                 }
 
                 // 检查审查人员信息是否完善
-                if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']==''){
-                    this.$message({
-                      showClose: true,
-                      message: '请完善质检人员信息！',
-                      type: 'error',
-                      center: true
-                    });
-                    return
-                }
+                // if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']==''){
+                //     this.$message({
+                //       showClose: true,
+                //       message: '请完善质检人员信息！',
+                //       type: 'error',
+                //       center: true
+                //     });
+                //     return
+                // }
 
                 // 将数据传入后端，参数如下：
                 // type：使用的算法类型，fog(空调漏氟)，tv(电视机回收)
@@ -204,15 +204,15 @@
                 }
 
                 // 检查审查人员信息是否完善
-                if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']==''){
-                    this.$message({
-                      showClose: true,
-                      message: '请完善质检人员信息！',
-                      type: 'error',
-                      center: true
-                    });
-                    return
-                }
+                // if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']==''){
+                //     this.$message({
+                //       showClose: true,
+                //       message: '请完善质检人员信息！',
+                //       type: 'error',
+                //       center: true
+                //     });
+                //     return
+                // }
 
                 const config = {headers: {'Content-Type': 'multipart/form-data'}}
 

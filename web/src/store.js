@@ -43,7 +43,9 @@ const state = {
                         '工位':'',
                         '视频录制时间':'',
                         '备注':'',
-                        '文档生成时间':'',},'results':['','','','','']}, // 当前结果文件的信息，用于在html中进行展示[{'details':{}, 'results':[]}, ...]
+                        '文档生成时间':'',},
+                        'results':[['','','','','']]}, // 当前结果文件的信息，用于在html中进行展示[{'details':{}, 'results':[[],..[]]}, ...]
+    presentResultImage:[],
     presentResult: '',
     presentResultIdx: -1, // 当前结果文件在列表中的索引
 }
@@ -165,6 +167,9 @@ const mutations = {
     presentResultInfoChange(state, [details, results]){
         state.presentResultInfo['details'] = details
         state.presentResultInfo['results'] = results
+    },
+    presentResultImageChange(state, img){
+        state.presentResultImage = img
     }
 
 }
