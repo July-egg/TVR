@@ -145,10 +145,10 @@ class HtmlSerializer:
                 result = '荧光粉残留'
             elif section_category == SECTION_CATEGORY.CONE_RESIDUE:
                 result = '锥体玻璃残留'
-            elif section_category == SECTION_CATEGORY.PHOSPHOR_WATER:
-                result = '荧光粉(水印残留)'
-            elif section_category == SECTION_CATEGORY.PHOSPHOR_WHITE:
-                result = '荧光粉(白印残留)'
+            # elif section_category == SECTION_CATEGORY.PHOSPHOR_WATER:
+            #     result = '荧光粉(水印残留)'
+            # elif section_category == SECTION_CATEGORY.PHOSPHOR_WHITE:
+            #     result = '荧光粉(白印残留)'
             else:
                 result = '违规操作'
 

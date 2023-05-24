@@ -133,12 +133,14 @@ def addVideo(file, video_type):
     controller.add_video(file_path)
 
 
-# TODO：删除视频列表中的文件,在viewmodel类中需要写对应的函数
+# TODO：根据idx删除视频列表中的文件,需要在controller和viewmodel类中写对应的函数
 @app.route('/video/delete', methods=['post'])
 def deleteVideo():
     params = request.get_json(silent=True)
     i, type = params['idx'], params['type']
-    # print(i, type)
+
+    # TODO：调用controller类
+
     return '删除{}视频文件{}'.format(i, type)
 
 
@@ -190,9 +192,6 @@ def getResults():
             print('未检测到json文件,继续检测%d次'.format(wait_time))
             time.sleep(10)
     return Response('error')
-
-    # return jsonify(data)
-    # return send_file('./results/屏锥玻璃2号工位_29D6E130_1669338406_1/summary.html', mimetype='text/html')
 
 @app.route('/result/image', methods=['post'])
 def getImage():

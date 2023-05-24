@@ -519,17 +519,23 @@ class Classifier:
             else:
                 # 判断是否有荧光粉残留
                 has_phosphor_residue, phosphor_residue_frame_no = self._phosphor_residue_examination()
-                if has_phosphor_residue == 1:
+                if has_phosphor_residue:
                     self.result = SECTION_CATEGORY.PHOSPHOR_RESIDUE
-                    frame_no = phosphor_residue_frame_no
-                elif has_phosphor_residue == 2:
-                    self.result = SECTION_CATEGORY.PHOSPHOR_WATER
-                    frame_no = phosphor_residue_frame_no
-                elif has_phosphor_residue == 3:
-                    self.result = SECTION_CATEGORY.PHOSPHOR_WHITE
                     frame_no = phosphor_residue_frame_no
                 else:
                     frame_no = phosphor_residue_frame_no
+
+                # if has_phosphor_residue == 1:
+                #     self.result = SECTION_CATEGORY.PHOSPHOR_RESIDUE
+                #     frame_no = phosphor_residue_frame_no
+                # elif has_phosphor_residue == 2:
+                #     self.result = SECTION_CATEGORY.PHOSPHOR_WATER
+                #     frame_no = phosphor_residue_frame_no
+                # elif has_phosphor_residue == 3:
+                #     self.result = SECTION_CATEGORY.PHOSPHOR_WHITE
+                #     frame_no = phosphor_residue_frame_no
+                # else:
+                #     frame_no = phosphor_residue_frame_no
 
         # 缺陷检测优先级：碎屏＞锥体玻璃残留＞荧光粉残留
         # if self._broken_examination():
@@ -694,32 +700,39 @@ class Classifier:
             return False, -1
 
     def _phosphor_residue_examination(self) -> bool:
-        # phosphor_max_len, clean_last = max_seq_len(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] < 0.5)
-        # phosphor_max_len, clean_last = max_seq_len(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] >= 0.5)
+        phosphor_max_len, clean_last = max_seq_len(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] < 0.5)
 
-        pass_max_len, clean_last = max_seq_len(self.phosphor_detection_results, idx=0)
-        phosphor_max_len, phosphor_last = max_seq_len(self.phosphor_detection_results, idx=1)
-        phosphor_water_max_len, phosphor_water_last = max_seq_len(self.phosphor_detection_results, idx=2)
-        phosphor_white_max_len, phosphor_white_last = max_seq_len(self.phosphor_detection_results, idx=3)
+        # pass_max_len, clean_last = max_seq_len(self.phosphor_detection_results, idx=0)
+        # phosphor_max_len, phosphor_last = max_seq_len(self.phosphor_detection_results, idx=1)
+        # phosphor_water_max_len, phosphor_water_last = max_seq_len(self.phosphor_detection_results, idx=2)
+        # phosphor_white_max_len, phosphor_white_last = max_seq_len(self.phosphor_detection_results, idx=3)
         threshold = SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO
 
         # 连续干净的屏面玻璃帧数小于阈值，判定为有荧光粉残留
-        if pass_max_len <= threshold:
-            lens = [phosphor_max_len, phosphor_water_max_len, phosphor_white_max_len]
-            i = lens.index(max(lens))
-            if i == 0:
-                # last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and np.argmax(ans[1])==(i+1))
-                frame_no = self.phosphor_detection_results[phosphor_last][0]
-            elif i == 1:
-                frame_no = self.phosphor_detection_results[phosphor_water_last][0]
-            else:
-                frame_no = self.phosphor_detection_results[phosphor_white_last][0]
-            # last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] >= 0.5)
-            # frame_no = self.phosphor_detection_results[last][0]
-            return i + 1, frame_no
+        if phosphor_max_len <= threshold:
+            last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] >= 0.5)
+            frame_no = self.phosphor_detection_results[last][0]
+            return True, frame_no
         else:
             frame_no = self.phosphor_detection_results[clean_last][0]
-            return 0, frame_no
+            return False, frame_no
+
+        # if pass_max_len <= threshold:
+        #     lens = [phosphor_max_len, phosphor_water_max_len, phosphor_white_max_len]
+        #     i = lens.index(max(lens))
+        #     if i == 0:
+        #         # last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and np.argmax(ans[1])==(i+1))
+        #         frame_no = self.phosphor_detection_results[phosphor_last][0]
+        #     elif i == 1:
+        #         frame_no = self.phosphor_detection_results[phosphor_water_last][0]
+        #     else:
+        #         frame_no = self.phosphor_detection_results[phosphor_white_last][0]
+        #     # last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] >= 0.5)
+        #     # frame_no = self.phosphor_detection_results[last][0]
+        #     return i + 1, frame_no
+        # else:
+        #     frame_no = self.phosphor_detection_results[clean_last][0]
+        #     return 0, frame_no
 
     def _cone_residue_examination(self) -> bool:
         cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in self.cone_detection_results]
@@ -742,17 +755,15 @@ class Classifier:
 
         # 使用resnet判断是否存在碎屏-------------------->
         self.broken_frame_cache.push(frame_no, screen)
-
         if self.broken_frame_cache.is_full() or is_last_frame:
             broken_batch_ans = classify_broken_with_batch(self.broken_frame_cache.frames(), BROKEN_DETECTION_BATCH_SIZE)
             cache_results = self.broken_frame_cache.join_nones(broken_batch_ans, clear=True)
             self.broken_detection_results.extend(cache_results)
 
+
         # 使用resnet模型判断是否有荧光粉残留-------------------->
         self.phosphor_frame_cache.push(frame_no, screen)
-
         if self.phosphor_frame_cache.is_full() or is_last_frame:
-            phosphor_batch_ans = classify_state_with_batch(self.phosphor_frame_cache.frames(),
-                                                           PHOSPHOR_DETECTION_BATCH_SIZE)
+            phosphor_batch_ans = classify_state_with_batch(self.phosphor_frame_cache.frames(),PHOSPHOR_DETECTION_BATCH_SIZE)
             cache_results = self.phosphor_frame_cache.join_nones(phosphor_batch_ans, clear=True)
             self.phosphor_detection_results.extend(cache_results)
