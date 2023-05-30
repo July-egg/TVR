@@ -6,7 +6,7 @@ import math
 import torch
 import torchvision
 import torchvision.transforms as transforms
-
+import mmcv
 from typing import List, Optional, Tuple, Union
 from PyQt5.QtGui import QPixmap, QImage
 
@@ -247,7 +247,7 @@ def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) 
 
         arrays = stack_images(bimages)
         preds = yolov5.detect(arrays, conf_thres)
-        for i, pred in enumerate(preds):
+        for j, pred in enumerate(preds):
             if pred.shape[0] == 0:
                 ret.append(None)
             else:
@@ -259,7 +259,7 @@ def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) 
                 if int(round(box[-1])) != 0:
                     ret.append(None)
                 else:
-                    box[:4] = box[:4] / bscales[i]
+                    box[:4] = box[:4] / bscales[i]           # 这里到底是i还是j，哪个循环里的？
                     x1, y1, x2, y2, conf, cls = box[0], box[1], box[2], box[3], box[4], box[5]
                     ret.append((x1, y1, x2, y2, conf, cls))
 
@@ -338,38 +338,33 @@ def detect_fog_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.3) -> 
 
     fog_net.load_model()
 
-    scales, resized_images = [], []
-    for image in images:
-        scale, resized = resize(image, 640, 640)
-        scales.append(scale)
-        resized_images.append(resized)
-
     ret = []
 
-    for i in range(0, len(scales), bs):
+    for i in range(0, len(images), bs):
         bi, bj = i, i + bs
-        bscales, bimages = scales[bi:bj], resized_images[bi:bj]
+        bimages = images[bi:bj]
 
-        arrays = stack_images(bimages)
-        preds = fog_net.detect(arrays, conf_thres)
-        for i, pred in enumerate(preds):
-            if pred.shape[0] == 0:
+        preds = fog_net.detect(bimages, conf_thres)
+        for j, pred in enumerate(preds):
+            if pred.labels.size == 0:
+                ret.append(None)
+            elif not pred.labels.contains(0):
                 ret.append(None)
             else:
-                # box = pred[0]
-                _, indices = torch.max(pred, dim=0)
-                max_conf_idx = indices[5]
-                box = pred[max_conf_idx]
-                box = box.cpu().numpy().astype(np.float64).reshape((6,))
-                if int(round(box[-1])) != 0:
-                    ret.append(None)
-                else:
-                    box[:4] = box[:4] / bscales[i]
-                    x1, y1, x2, y2, conf, cls = box[0], box[1], box[2], box[3], box[4], box[5]
-                    ret.append((x1, y1, x2, y2, conf, cls))
+                for k in range(pred.labels.size):
+                    if pred.labels[k] == 0:
+                        conf = pred.scores[k]
+                        cls = pred.labels[k]
+                        x1, y1, x2, y2 = pred.bboxes[k]
+                        ret.append((x1, y1, x2, y2, conf, cls))
+                        break
 
     return ret
 
 
 if __name__ == '__main__':
-    detect_fog_with_batch()
+    imgfile = r"D:\screenproject\YOLO\fogcoco2\images\%E7%A9%BA%E8%B0%83%E4%B8%80%E7%BA%BF%E6%8A%BD%E6%B0%9F%E5%B7%A5%E4%BD%8D_1ECF1F98_1669260038_1.mp4#t=4.55.jpg"
+    img = mmcv.imread(imgfile)
+    imgs = []
+    imgs.append(img)
+    detect_fog_with_batch(imgs, 1, conf_thres=0.3)
