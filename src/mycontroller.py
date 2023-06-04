@@ -87,7 +87,7 @@ class MainWindowController:
         if self.model is not None:
             self.model.set_progress(i, amount, self.videos_queue.qsize())
 
-    def examine_video(self, idx, dest_dir, type):
+    def examine_video(self, idx, dest_dir, video_type):
         handler = self.model.get(idx)
         handler.set_examined(True)
 
@@ -103,7 +103,7 @@ class MainWindowController:
         output_dir.mkdir(exist_ok=True)
 
         arbiter = Arbiter(0.8, str(output_dir), use_detectors)
-        results = arbiter.arbitrate(video_path, type=type, progress_queue=self.progress_queue)
+        results = arbiter.arbitrate(video_path, video_type=type, progress_queue=self.progress_queue)
 
         self.summary_queue.put((finished, video_path, fps, details, dest_dir, results))
 

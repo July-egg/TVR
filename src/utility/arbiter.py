@@ -12,7 +12,6 @@ from utility.dataset import *
 from utility.processer import *
 from utility.test_utils import *
 
-
 utility.config.update_detection_weight('mbest')
 utility.config.update_valid_weight('280782_model_best')
 # utility.config.update_state_weight('801802_model_best')
@@ -71,10 +70,10 @@ class ClassifierDetector:
                 drawfile = draw_dir / f'{frame_no:05}.jpg'
                 contents = [
                     ([
-                        # f"{'NOT_VALID' if broken_ans > 0.5 else 'VALID'} ({broken_ans:.2})",
-                        # TODO:
-                        f"{'FAIL' if phosphor_ans > 0.5 else 'PASS'} ({phosphor_ans:.2})",
-                    ], 'lt0')
+                         # f"{'NOT_VALID' if broken_ans > 0.5 else 'VALID'} ({broken_ans:.2})",
+                         # TODO:
+                         f"{'FAIL' if phosphor_ans > 0.5 else 'PASS'} ({phosphor_ans:.2})",
+                     ], 'lt0')
                 ]
                 drawed = dip.rectangle_and_text(frame, bbox[:4], contents, font_size=15, bgcolor=(108, 210, 101))
 
@@ -128,14 +127,14 @@ class Arbiter:
         检测视频并保存结果
     '''
 
-    def __init__(self, detection_conf, save_dir=None, use_detectors: bool=False) -> None:
+    def __init__(self, detection_conf, save_dir=None, use_detectors: bool = False) -> None:
         self.detection_conf = detection_conf  # yolo模型置信度
         self.save_dir = save_dir
         self.use_detectors = use_detectors
 
-    def arbitrate(self, video_path: str, verbose=False, progress_queue=None, type='tv'):
+    def arbitrate(self, video_path: str, verbose=False, progress_queue=None, video_type='tv'):
         print(f'start: {datetime.now().strftime("%H-%M-%S")}')
-        print('detect video type:{}'.format(type))
+        print('detect video type:{}'.format(video_type))
         sectionalizer_detector = SectionalizerDetector(self.save_dir) if self.use_detectors else None
 
         frame_filter = FrameFilter(video_path, set_end_flag=True)  # 获取视频帧
@@ -149,10 +148,10 @@ class Arbiter:
 
         _enum = tqdm.tqdm(frame_filter) if verbose else frame_filter
 
-        classifier_detector = ClassifierDetector(path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
+        classifier_detector = ClassifierDetector(
+            path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
         # 创建分类器，用于视频帧图像的状态分类
         classifier = Classifier(classifier_detector)
-        # classifier_fog = Classifier(classifier_detector)
 
         # 遍历视频并批量获取帧
         for i, (tag, frame_idx, msec, frame) in enumerate(_enum):
@@ -160,8 +159,10 @@ class Arbiter:
                 progress_queue.put((i, len(frame_filter)))
 
             # 将当前帧添加到序列中，使用yolo模型检测屏面玻璃位置并保存到frame中
-            sectionalizer.add_frame(tag, frame_idx, msec, frame)
-            # sectionalizer.add_frame_fog(tag, frame_idx, msec, frame, type=type)
+            if video_type == 'tv':
+                sectionalizer.add_frame(tag, frame_idx, msec, frame)
+            else:
+                sectionalizer.add_frame_fog(tag, frame_idx, msec, frame)
 
             if sectionalizer.is_ready():
                 # 从序列中获取帧
@@ -171,14 +172,12 @@ class Arbiter:
                     continue
 
                 # 将当前批次帧送入检测器进行检测
-                if type=='tv':
+                if video_type == 'tv':
                     classifier.push_partial_section(is_over, psection)
-                else:
-                    classifier.push_partial_section_fog(is_over, psection)
 
                 # 如果当前视频到达末尾
                 if is_over:
-                    if type=='tv':
+                    if video_type == 'tv':
                         # 根据之前检测缓存的结果，调用classify函数判断输出最近检测结果
                         start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = classifier.classify()
 
@@ -186,17 +185,15 @@ class Arbiter:
                             classifier_detector.save_result()
 
                         section_results.append((
-                            start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec
+                            start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame,
+                            frame_no, frame_msec
                         ))
 
                         if verbose:
                             print(f'{section_idx:02}:', section_results[-1])
                     else:
-                        # 根据之前检测缓存的结果，调用classify函数判断输出最近检测结果
+                        # 这里还差一个返回漏氟结果的函数
                         start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = classifier.classify_fog()
-
-                        if classifier_detector is not None:
-                            classifier_detector.save_result()
 
                         fog_section_results.append((
                             start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame,
@@ -209,7 +206,8 @@ class Arbiter:
                     section_idx += 1
 
                     # 更新分类器
-                    classifier_detector = ClassifierDetector(path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
+                    classifier_detector = ClassifierDetector(
+                        path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
                     classifier = Classifier(classifier_detector)
 
                     # if section_idx == 2:
@@ -220,4 +218,4 @@ class Arbiter:
         if progress_queue is not None:
             progress_queue.put((-1, -1))
 
-        return section_results if type=='tv' else fog_section_results
+        return section_results if video_type == 'tv' else fog_section_results

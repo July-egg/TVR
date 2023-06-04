@@ -17,6 +17,7 @@ import argparse
 
 dest_dir = ''
 
+
 def _examine_videos(dest_dir, indexes, controller) -> bool:
     # 获取上一次的保存地址
     print(dest_dir)
@@ -30,6 +31,7 @@ def _examine_videos(dest_dir, indexes, controller) -> bool:
 
     print('has_examined_video:', has_examined_video)
     return has_examined_video
+
 
 def on_examine_one_video(dest_dir, idx, controller, video_type) -> bool:
     # 检测单个视频时，先判断是否已经质检过一次，是的话让用户进行选择
@@ -117,6 +119,7 @@ def add():
     print('已经将视频{}加入列表'.format(file.filename))
     return '已经将{}加入视频列表'.format(file.filename)
 
+
 def addVideo(file, video_type):
     buffer_video = file.read()
 
@@ -193,6 +196,7 @@ def getResults():
             time.sleep(10)
     return Response('error')
 
+
 @app.route('/result/image', methods=['post'])
 def getImage():
     data = request.get_json(silent=True)
@@ -219,6 +223,7 @@ def getImage():
             time.sleep(10)
 
     return Response('error')
+
 
 @app.route('/result/excel', methods=['post'])
 def getExcel():

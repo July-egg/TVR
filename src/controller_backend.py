@@ -24,7 +24,7 @@ def _examine_videos(videos_queue, summary_queue, progress_queue):
         output_dir.mkdir(exist_ok=True)
 
         arbiter = Arbiter(0.8, str(output_dir), use_detectors)
-        results = arbiter.arbitrate(video_path, progress_queue=progress_queue, type=video_type)
+        results = arbiter.arbitrate(video_path, progress_queue=progress_queue, video_type=video_type)
 
         summary_queue.put((finished, video_path, fps, details, dest_dir, results))
 

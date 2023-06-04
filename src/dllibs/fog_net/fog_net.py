@@ -66,7 +66,7 @@ def detect(imgs, conf_thres=0.5):  # conf_thres设置0.5还是0.3？
     for pred in preds:
         pred_instance = pred.pred_instances[
             pred.pred_instances.scores > conf_thres]
-        print(pred_instance.cpu().numpy())
+        # print(pred_instance.cpu().numpy())
         ret.append(pred_instance.cpu().numpy())
 
     return ret
