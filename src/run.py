@@ -17,7 +17,6 @@ import argparse
 
 dest_dir = ''
 
-
 def _examine_videos(dest_dir, indexes, controller) -> bool:
     # 获取上一次的保存地址
     print(dest_dir)
@@ -32,7 +31,6 @@ def _examine_videos(dest_dir, indexes, controller) -> bool:
     print('has_examined_video:', has_examined_video)
     return has_examined_video
 
-
 def on_examine_one_video(dest_dir, idx, controller, video_type) -> bool:
     # 检测单个视频时，先判断是否已经质检过一次，是的话让用户进行选择
     if dest_dir:
@@ -43,7 +41,9 @@ def on_examine_one_video(dest_dir, idx, controller, video_type) -> bool:
             try:
                 print('开始进行检测\n')
                 controller.examine_video(idx, dest_dir, video_type)
-                # print(controller.summary_queue)
+                while controller.get_processing():
+                    print("正在检测中...")
+                    time.sleep(10)
             except:
                 print('检测出错！')
                 return False
@@ -62,53 +62,36 @@ async def detectOne():
     # print(idx, type, files)
     # print(executor, workstation, date_time, memo)
 
-    if video_type == 'fog':
-        # 如果当前视频序列为空，则将files添加进去
-        if len(controller.viewmodel._video_handlers) == 0:
-            print('当前视频序列为空，将files添加进去')
-            for f in files:
-                addVideo(f, video_type)
+    # 如果当前视频序列为空，则将files添加进去
+    if len(controller.viewmodel._video_handlers) == 0:
+        print('当前视频序列为空，将files添加进去')
+        for f in files:
+            addVideo(f, video_type)
 
-        # 设置视频详细信息
-        controller.set_video_details(idx, audit)
+    # 设置视频详细信息
+    controller.set_video_details(idx, audit)
 
-        # 对单个视频文件进行检测
-        on_examine_one_video(dest_dir, idx, controller, video_type)
+    # 对单个视频文件进行检测
+    has_examined_video = on_examine_one_video(dest_dir, idx, controller, video_type)
+    # has_examined_video = True
 
-        res = open(dest_dir + '/' + Path(controller.viewmodel.get(idx).video_path()).stem + '/summary.html', 'rb')
-        return Response(res, mimetype='text/html')
-    else:
-        # 如果当前视频序列为空，则将files添加进去
-        if len(controller.viewmodel._video_handlers) == 0:
-            print('当前视频序列为空，将files添加进去')
-            for f in files:
-                addVideo(f, video_type)
+    print('是否检测完成：', has_examined_video)
 
-        # 设置视频详细信息
-        controller.set_video_details(idx, audit)
+    # TODO 把被动返回检测结果变成get_result用户主动拉取
+    if has_examined_video:
+        summary_path = dest_dir + '/' + Path(controller.viewmodel.get(idx).video_path()).stem + '/summary.json'
+        print(summary_path)
+        wait_time = 10
+        while wait_time > 0:
+            if os.path.isfile(summary_path):
+                return Response('success')
+                # return Response(res, mimetype='text/html')
+            else:
+                wait_time -= 1
+                print('未检测到结果文件,继续检测{:d}次'.format(wait_time))
+                time.sleep(10)
 
-        # 对单个视频文件进行检测
-        # has_examined_video = on_examine_one_video(dest_dir, idx, controller, video_type)
-        has_examined_video = True
-
-        print('是否检测完成：', has_examined_video)
-
-        # TODO 把被动返回检测结果变成get_result用户主动拉取
-        if has_examined_video:
-            summary_path = dest_dir + '/' + Path(controller.viewmodel.get(idx).video_path()).stem + '/summary.html'
-            print(summary_path)
-            wait_time = 10
-            while wait_time > 0:
-                if os.path.isfile(summary_path):
-                    res = open(summary_path, 'rb')
-                    return Response('success')
-                    # return Response(res, mimetype='text/html')
-                else:
-                    wait_time -= 1
-                    print('未检测到结果文件,继续检测%d次'.format(wait_time))
-                    time.sleep(10)
-
-            return Response('error')
+        return Response('error')
 
 
 @app.route('/video/add', methods=['post'])
@@ -118,7 +101,6 @@ def add():
     addVideo(file, video_type)
     print('已经将视频{}加入列表'.format(file.filename))
     return '已经将{}加入视频列表'.format(file.filename)
-
 
 def addVideo(file, video_type):
     buffer_video = file.read()
@@ -180,7 +162,7 @@ def getResults():
                 'results': [
                     [
                         json_info['Proceduces'][i]['SectionIndex'],
-                        json_info['Proceduces'][i]['AbsoluteStartTime'] + '-' + json_info['Proceduces'][0][
+                        json_info['Proceduces'][i]['AbsoluteStartTime'] + '-' + json_info['Proceduces'][i][
                             'AbsoluteEndTime'],
                         json_info['Proceduces'][i]['RelativeStartTime'],
                         json_info['Proceduces'][i]['KeyFrameTime'],
@@ -192,10 +174,9 @@ def getResults():
             return Response(json.dumps(data), mimetype='application/json')
         else:
             wait_time -= 1
-            print('未检测到json文件,继续检测%d次'.format(wait_time))
+            print('未检测到json文件,继续检测{:d}次'.format(wait_time))
             time.sleep(10)
     return Response('error')
-
 
 @app.route('/result/image', methods=['post'])
 def getImage():
@@ -219,11 +200,10 @@ def getImage():
             return response
         else:
             wait_time -= 1
-            print('未检测到image文件,继续检测%d次'.format(wait_time))
+            print('未检测到image文件,继续检测{:d}次'.format(wait_time))
             time.sleep(10)
 
     return Response('error')
-
 
 @app.route('/result/excel', methods=['post'])
 def getExcel():
@@ -238,7 +218,7 @@ def getExcel():
             return send_file(excel_path, mimetype="application/vnd.ms-excel")
         else:
             wait_time -= 1
-            print('未检测到excel文件,继续检测%d次'.format(wait_time))
+            print('未检测到excel文件,继续检测{:d}次'.format(wait_time))
             time.sleep(10)
     return Response('error')
 

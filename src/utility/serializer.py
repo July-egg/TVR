@@ -8,7 +8,7 @@ import numpy as np
 import datetime as dtmod
 from datetime import datetime, timedelta
 from os import path
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 import utility.config
 from utility.dip import OpenCV_to_PIL
@@ -60,7 +60,7 @@ class HtmlSerializer:
             workstation: str,
             date_time: datetime,
             memo: str,
-            items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, str, int, float]]) -> None:
+            items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, str, int, float]]) -> Tuple[List[Tuple[str, str]], Any]:
 
         images_dir = path.join(save_dir, 'images')
         os.makedirs(images_dir, exist_ok=True)
@@ -74,16 +74,7 @@ class HtmlSerializer:
             ('文档生成时间', datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
         ])
 
-        detail = [
-            ('检查人', executor),
-            ('视频文件', Path(videopath).name),
-            ('工位', workstation),
-            ('视频录制时间', date_time.strftime('%Y/%m/%d %H:%M:%S')),
-            ('备注', memo),
-            ('文档生成时间', datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
-        ]
-
-        results, result = self._results(fps, date_time, items)
+        results = self._results(fps, date_time, items)
 
         title = Path(videopath).stem
 
@@ -98,8 +89,6 @@ class HtmlSerializer:
 
         with open(path.join(save_dir, 'summary.html'), 'w', encoding='utf-8') as f:
             f.write(file_content)
-
-        return detail, result
 
     def _details(self, kvs: List[Tuple[str, str]]) -> str:
         lines = []
@@ -127,7 +116,6 @@ class HtmlSerializer:
             '</tr>'
         ]
 
-        res = [('序号', '操作时间段', '操作时间点', '视频时间点', '系统判断结果', '判断图像')]
         for i, (frame_start, frame_end, start_msec, end_msec, section_category, cone_percentage, frame_path, frame_no, frame_msec) in enumerate(items):
             video_start, video_end = seconds_to_hms(start_msec / 1000, use_round=True), seconds_to_hms(end_msec / 1000, use_round=True)
 
@@ -162,11 +150,10 @@ class HtmlSerializer:
                 f'  <td><img src="{frame_path}" alt="无图像" /></td>',
                 '</tr>'
             ])
-            res.push((i+1, operation_start-operation_end, operation_time_point, seconds_to_hms(frame_msec / 1000, use_round=True), result))
 
         results = '\n'.join(f'        {line}' for line in lines)
 
-        return results, res
+        return results
 
 
 class JsonSerializer:
@@ -182,10 +169,14 @@ class JsonSerializer:
             workstation: str,
             date_time: datetime,
             memo: str,
+            video_type: str,
             items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, str, int, float]]) -> None:
 
         content = self._content(videopath, executor, workstation, date_time, memo)
-        summary, proceduces = self._items(fps, date_time, items)
+        if video_type == 'tv':
+            summary, proceduces = self._items(fps, date_time, items)
+        else:
+            summary, proceduces = self._items_fog(fps, date_time, items)
         content['Summary'] = summary
         content['Proceduces'] = proceduces
 
@@ -231,6 +222,28 @@ class JsonSerializer:
         ]
         return summary, proceduces
 
+    def _items_fog(self, fps, date_time: datetime, items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, str, int, float]]) -> Tuple[dict, dict]:
+        summary = {
+            'Total': len(items),
+            'Pass': len([item[4] for item in items if item[4] == 0]),
+            'Fog': len([item[4] for item in items if item[4] == 1]),
+        }
+        proceduces = [
+            {
+                'SectionIndex': i + 1,
+                'RelativeStartTime': seconds_to_hms(start_msec / 1000, use_round=False),
+                'RelativeEndTime': seconds_to_hms(end_msec / 1000, use_round=False),
+                'AbsoluteStartTime': (date_time + timedelta(seconds=start_msec / 1000)).strftime('%H:%M:%S'),
+                'AbsoluteEndTime': (date_time + timedelta(seconds=end_msec / 1000)).strftime('%H:%M:%S'),
+                'Duration': (end_msec - start_msec) / 1000,
+                'ExaminationResult': 'Fog',
+                # 'ResidualGlassPercentage': percentage,
+                'KeyFramePath': frame_path,
+                'KeyFrameTime': seconds_to_hms(frame_msec / 1000, use_round=False)
+            } for i, (frame_start, frame_end, start_msec, end_msec, cat, percentage, frame_path, frame_no, frame_msec) in enumerate(items)
+        ]
+        return summary, proceduces
+
 
 class ExcelSerializer:
     def __init__(self) -> None:
@@ -260,6 +273,7 @@ class ExcelSerializer:
             workstation: str,
             date_time: datetime,
             memo: str,
+            video_type: str,
             items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, str, int, float]]) -> None:
 
         workbook = xlwt.Workbook()
@@ -276,33 +290,56 @@ class ExcelSerializer:
         for i, title in enumerate(['序号', '操作时间段', '操作时间点', '视频时间点', '系统判断结果']):
             sheet.write(0, i, title, self._cell_style(bold=True))
 
-        for i, (frame_start, frame_end, start_msec, end_msec, section_category, cone_percentage, frame_path, frame_no, frame_msec) in enumerate(items):
-            operation_start_time = date_time + milliseconds_to_timedelta(start_msec)
-            operation_end_time = date_time + milliseconds_to_timedelta(end_msec)
-            operation_start, operation_end = operation_start_time.strftime("%H:%M:%S"), operation_end_time.strftime("%H:%M:%S")
-            operation_period = f'{operation_start}-{operation_end}'
+        if video_type == 'tv':
+            for i, (frame_start, frame_end, start_msec, end_msec, section_category, cone_percentage, frame_path, frame_no, frame_msec) in enumerate(items):
+                operation_start_time = date_time + milliseconds_to_timedelta(start_msec)
+                operation_end_time = date_time + milliseconds_to_timedelta(end_msec)
+                operation_start, operation_end = operation_start_time.strftime("%H:%M:%S"), operation_end_time.strftime("%H:%M:%S")
+                operation_period = f'{operation_start}-{operation_end}'
 
-            operation_time_point = (date_time + milliseconds_to_timedelta(frame_msec)).strftime("%H:%M:%S")
-            video_time_point = seconds_to_hms(frame_msec / 1000, use_round=True)
+                operation_time_point = (date_time + milliseconds_to_timedelta(frame_msec)).strftime("%H:%M:%S")
+                video_time_point = seconds_to_hms(frame_msec / 1000, use_round=True)
 
-            if section_category == SECTION_CATEGORY.PASS:
-                result = '合格'
-            elif section_category == SECTION_CATEGORY.BROKEN:
-                result = '碎屏'
-            elif section_category == SECTION_CATEGORY.PHOSPHOR_RESIDUE:
-                result = '荧光粉残留'
-            elif section_category == SECTION_CATEGORY.CONE_RESIDUE:
-                result = '锥体玻璃残留'
-            elif section_category == SECTION_CATEGORY.PHOSPHOR_WATER:
-                result = '荧光粉(水印残留)'
-            elif section_category == SECTION_CATEGORY.PHOSPHOR_WHITE:
-                result = '荧光粉(白印残留)'
-            else:
-                result = '违规操作'
+                if section_category == SECTION_CATEGORY.PASS:
+                    result = '合格'
+                elif section_category == SECTION_CATEGORY.BROKEN:
+                    result = '碎屏'
+                elif section_category == SECTION_CATEGORY.PHOSPHOR_RESIDUE:
+                    result = '荧光粉残留'
+                elif section_category == SECTION_CATEGORY.CONE_RESIDUE:
+                    result = '锥体玻璃残留'
+                elif section_category == SECTION_CATEGORY.PHOSPHOR_WATER:
+                    result = '荧光粉(水印残留)'
+                elif section_category == SECTION_CATEGORY.PHOSPHOR_WHITE:
+                    result = '荧光粉(白印残留)'
+                else:
+                    result = '违规操作'
 
-            for j, content in enumerate([str(i + 1), operation_period, operation_time_point, video_time_point, result]):
-                sheet.write(i + 1, j, content)
-                proper_widths[j] = max(proper_widths[j], self._proper_cell_width(content))
+                for j, content in enumerate([str(i + 1), operation_period, operation_time_point, video_time_point, result]):
+                    sheet.write(i + 1, j, content)
+                    proper_widths[j] = max(proper_widths[j], self._proper_cell_width(content))
+        else:
+            for i, (frame_start, frame_end, start_msec, end_msec, section_category, cone_percentage, frame_path, frame_no, frame_msec) in enumerate(items):
+                operation_start_time = date_time + milliseconds_to_timedelta(start_msec)
+                operation_end_time = date_time + milliseconds_to_timedelta(end_msec)
+                operation_start, operation_end = operation_start_time.strftime("%H:%M:%S"), operation_end_time.strftime(
+                    "%H:%M:%S")
+                operation_period = f'{operation_start}-{operation_end}'
+
+                operation_time_point = (date_time + milliseconds_to_timedelta(frame_msec)).strftime("%H:%M:%S")
+                video_time_point = seconds_to_hms(frame_msec / 1000, use_round=True)
+
+                if section_category == 0:
+                    result = '合格'
+                elif section_category == 1:
+                    result = '漏氟'
+                else:
+                    result = '违规操作'
+
+                for j, content in enumerate(
+                        [str(i + 1), operation_period, operation_time_point, video_time_point, result]):
+                    sheet.write(i + 1, j, content)
+                    proper_widths[j] = max(proper_widths[j], self._proper_cell_width(content))
 
         for i, width in enumerate(proper_widths):
             sheet.col(i).width = width
@@ -324,27 +361,26 @@ class ResultSerializer:
             workstation: str,
             date_time: datetime,
             memo: str,
+            video_type: str,
             items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, np.ndarray, int, float]]) -> None:
 
         image_saver = ImageSaver()
         image_paths = image_saver.save(save_dir, [frame for *_, frame, _, _ in items])
 
-        items = [(*head, image_path, frame_no, frame_msec) for (*head, _, frame_no, frame_msec), image_path in zip(items, image_paths)]
+        save_items = [(*head, image_path, frame_no, frame_msec) for (*head, _, frame_no, frame_msec), image_path in zip(items, image_paths)]
+        print(save_items[0])
 
         json_serializer = JsonSerializer()
-        json_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, items)
+        json_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)
 
         src_dir = path.join(save_dir, '__src')
         os.makedirs(src_dir, exist_ok=True)
 
         excel_serializer = ExcelSerializer()
-        excel_serializer.serialize(src_dir, videopath, fps, executor, workstation, date_time, memo, items)
+        excel_serializer.serialize(src_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)
 
-        xls_name = Path(videopath).stem
-        xls_path = path.abspath(path.join(src_dir, f'{xls_name}.xls')).replace('\\', '/')
+        # xls_name = Path(videopath).stem
+        # xls_path = path.abspath(path.join(src_dir, f'{xls_name}.xls')).replace('\\', '/')
 
-        html_serializer = HtmlSerializer(xls_path)
-        detail, result = html_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, items)
-
-        return detail, result
-
+        # html_serializer = HtmlSerializer(xls_path)
+        # html_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)

@@ -4,6 +4,7 @@ import queue
 from threading import Thread
 from typing import Optional
 import datetime
+import time
 
 from utility.arbiter import Arbiter
 from utility.serializer import ResultSerializer
@@ -16,7 +17,7 @@ def _examine_videos(videos_queue, summary_queue, progress_queue):
         finished, video_path, fps, details, dest_dir, video_type, use_detectors = videos_queue.get()
 
         if finished:
-            summary_queue.put((True, None, None, None, None, None))
+            summary_queue.put((True, None, None, None, None, None, None))
             break
 
         name = Path(video_path).stem
@@ -26,16 +27,16 @@ def _examine_videos(videos_queue, summary_queue, progress_queue):
         arbiter = Arbiter(0.8, str(output_dir), use_detectors)
         results = arbiter.arbitrate(video_path, progress_queue=progress_queue, video_type=video_type)
 
-        summary_queue.put((finished, video_path, fps, details, dest_dir, results))
+        summary_queue.put((finished, video_path, fps, details, dest_dir, video_type, results))
 
         del arbiter
         del results
 
 
 # 保存检测结果线程
-def _save_results(summary_queue):
+def _save_results(summary_queue, controller):
     while True:
-        finished, video_path, fps, details, dest_dir, results = summary_queue.get()
+        finished, video_path, fps, details, dest_dir, video_type, results = summary_queue.get()
 
         if finished:
             break
@@ -57,7 +58,9 @@ def _save_results(summary_queue):
         date_time = datetime.datetime(year, month, day, h, m, s)
 
         serializer = ResultSerializer()
-        serializer.serialize(save_dir, video_path, fps, executor, workstation, date_time, memo, results)
+        serializer.serialize(save_dir, video_path, fps, executor, workstation, date_time, memo, video_type, results)
+        time.sleep(2)
+        controller.set_processing(False)
 
 
 # 实时监测线程数量，当前无运行线程时结束
@@ -96,7 +99,7 @@ class MainWindowController:
         )
 
         self.io_thread = Thread(
-            target=_save_results, args=(self.summary_queue,)
+            target=_save_results, args=(self.summary_queue, self)
         )
 
         self.progress_thread = Thread(
@@ -113,6 +116,8 @@ class MainWindowController:
 
         self.viewmodel: Optional[ViewModel] = None
 
+        self.is_processing = False
+
     def set_viewmodel(self, viewmodel):
         self.viewmodel = viewmodel
         self.progress_thread.start()
@@ -127,8 +132,8 @@ class MainWindowController:
 
     def set_video_details(self, idx, details):
         print('运行set_video_details, idx: ', idx)
-        print('model:', self.viewmodel)
-        print('model._video_handlers:', self.viewmodel._video_handlers)
+        # print('model:', self.viewmodel)
+        # print('model._video_handlers:', self.viewmodel._video_handlers)
         handeler = self.viewmodel.get(idx)
         handeler.set_details(details)
 
@@ -142,6 +147,17 @@ class MainWindowController:
         # 在视频检测线程中添加新视频
         self.videos_queue.put(
             (False, handler.video_path(), handler.fps(), handler.details(), dest_dir, video_type, self.use_detectors))
+        self.set_processing(True)
+
+    def set_processing(self, processing):
+        self.is_processing = processing
+
+    def get_processing(self, ):
+        print("当前运行状态", self.is_processing)
+        return self.is_processing
+
+    def check_processing(self, ):
+        return self.is_processing
 
     def exit(self, kill_all=False):
         if kill_all:

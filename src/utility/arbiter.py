@@ -12,11 +12,11 @@ from utility.dataset import *
 from utility.processer import *
 from utility.test_utils import *
 
-utility.config.update_detection_weight('mbest')
-utility.config.update_valid_weight('280782_model_best')
-# utility.config.update_state_weight('801802_model_best')
-utility.config.update_state_weight('802311_model_best')
-utility.config.update_segment_weight('CE_Net_276_8')
+# utility.config.update_detection_weight('mbest')
+# utility.config.update_valid_weight('280782_model_best')
+# utility.config.update_state_weight('model_best')
+# # utility.config.update_state_weight('802311_model_best')
+# utility.config.update_segment_weight('CE_Net_276_8')
 
 
 class SectionalizerDetector:
@@ -152,6 +152,7 @@ class Arbiter:
             path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
         # 创建分类器，用于视频帧图像的状态分类
         classifier = Classifier(classifier_detector)
+        fogDetetor = FogDetector()
 
         # 遍历视频并批量获取帧
         for i, (tag, frame_idx, msec, frame) in enumerate(_enum):
@@ -174,6 +175,8 @@ class Arbiter:
                 # 将当前批次帧送入检测器进行检测
                 if video_type == 'tv':
                     classifier.push_partial_section(is_over, psection)
+                else:
+                    fogDetetor.push_partial_section(is_over, psection)
 
                 # 如果当前视频到达末尾
                 if is_over:
@@ -192,8 +195,7 @@ class Arbiter:
                         if verbose:
                             print(f'{section_idx:02}:', section_results[-1])
                     else:
-                        # 这里还差一个返回漏氟结果的函数
-                        start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = classifier.classify_fog()
+                        start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = fogDetetor.get_results()
 
                         fog_section_results.append((
                             start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame,
@@ -209,6 +211,7 @@ class Arbiter:
                     classifier_detector = ClassifierDetector(
                         path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
                     classifier = Classifier(classifier_detector)
+                    fogDetetor = FogDetector()
 
                     # if section_idx == 2:
                     #     break

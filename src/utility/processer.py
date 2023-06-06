@@ -219,7 +219,6 @@ class Sectionalizer:
 
                 # 如果新开始检测一个批次帧 且 检测到了fog
                 if self.state == self.State.OUT_OF_SECTION:
-                    print(self._found_screen(ans))
                     if self._found_screen(ans):
                         self.state = self.State.IN_SECTION
 
@@ -290,7 +289,7 @@ class Sectionalizer:
         self.deferred_frames.clear()
 
     def _found_screen(self, flags) -> bool:
-        print(flags)
+        # print("flags:", flags)
         return any(flag is not None for flag in flags)
 
     def _section_is_over(self) -> bool:
@@ -462,6 +461,83 @@ class Sectionalizer:
         if not self.is_unfinished:
             self.section_idx += 1
             self.section_detect_flags.clear()
+
+
+class FogDetector:
+    class BatchCache:
+        def __init__(self, batch_size: int) -> None:
+            self.batch_size = batch_size
+            self._frames = []
+            self._nones = []
+
+        def push(self, frame_no: int, frame: Optional[np.ndarray]) -> None:
+            if frame is None:
+                self._nones.append((frame_no, None))
+            else:
+                self._frames.append((frame_no, frame))
+
+        def is_full(self) -> bool:
+            return len(self._frames) == self.batch_size
+
+        def frames(self) -> List:
+            return [frame for frame_no, frame in self._frames]
+
+        def join_nones(self, results, clear=True) -> List:
+            joined = [(frame_no, ans) for (frame_no, frame), ans in zip(self._frames, results)] + self._nones
+            joined.sort(key=lambda re: re[0])
+
+            if clear:
+                self.clear()
+
+            return joined
+
+        def clear(self) -> None:
+            self._frames.clear()
+            self._nones.clear()
+
+    def __init__(self) -> None:
+
+        # 保存检测出fog的第一个和最后一个帧的no与msec
+        self.first_frame_no = None
+        self.last_frame_no = None
+        self.start_msec = None
+        self.end_msec = None
+
+        self.last_psection = None
+
+        self.result = 0
+
+    def push_partial_section(self, is_over: bool, psection):
+        if psection:
+            self.last_psection = psection
+
+        if self.first_frame_no is None:
+            first_frame_idx = index_of_first(psection, lambda item: item[3])
+            self.first_frame_no = psection[first_frame_idx][0]
+            self.start_msec = psection[first_frame_idx][1]
+
+        last_frame_index = index_of_last(psection, lambda item: item[3])
+        if last_frame_index is not None:
+            self.last_frame_no = psection[last_frame_index][0]
+            self.end_msec = psection[last_frame_index][1]
+
+    def get_results(self) -> Tuple[Any, Any, Any, Any, Any, Any, Optional[Any], Any, Any]:
+
+        self.result = 1
+        frame_no = self.first_frame_no + 1
+        percentage = 1
+
+        # TODO
+        fn, frame = -1, None
+
+        for fn, _, frame, _ in self.last_psection:
+            if fn == frame_no:
+                break
+
+        if fn != frame_no:
+            frame = None
+
+        return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, percentage, frame, frame_no, frame_no * self.start_msec / self.first_frame_no
 
 
 # 屏幕状态种类，按顺序分别是：

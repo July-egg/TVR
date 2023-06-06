@@ -259,7 +259,7 @@ def detect_screen_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.5) 
                 if int(round(box[-1])) != 0:
                     ret.append(None)
                 else:
-                    box[:4] = box[:4] / bscales[i]           # 这里到底是i还是j，哪个循环里的？
+                    box[:4] = box[:4] / bscales[j]           # 这里到底是i还是j，哪个循环里的？
                     x1, y1, x2, y2, conf, cls = box[0], box[1], box[2], box[3], box[4], box[5]
                     ret.append((x1, y1, x2, y2, conf, cls))
 
