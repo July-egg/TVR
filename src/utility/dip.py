@@ -340,9 +340,12 @@ def detect_fog_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.3) -> 
 
     ret = []
 
-    for i in range(0, len(images), bs):
+    # detecting_images = [image for image in images]
+    detecting_images = list(images)
+
+    for i in range(0, len(detecting_images), bs):
         bi, bj = i, i + bs
-        bimages = images[bi:bj]
+        bimages = detecting_images[bi:bj]
 
         preds = fog_net.detect(bimages, conf_thres)
         for j, pred in enumerate(preds):

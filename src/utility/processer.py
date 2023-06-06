@@ -18,7 +18,7 @@ from .config import get_batch_info
 
 # 每秒优先检测帧数
 SCREEN_DETECTION_FREQUENCY = 3
-FOG_DETECTION_FREQUENCY = 5
+FOG_DETECTION_FREQUENCY = 6
 # 每秒检测帧数放大率，与 SCREEN_DETECTION_FREQUENCY 的差值为待检测帧数
 DIAGNOSIS_MAGNIFICATION_RATIO = 2
 # 目标检测长尾时间
@@ -49,7 +49,7 @@ class FRAME_TAG(enum.Enum):
 
 # 获取视频帧并返回
 class FrameFilter:
-    def __init__(self, video_path: str, set_end_flag: bool = False,
+    def __init__(self, video_path: str, set_end_flag: bool = False, video_type='tv',
                  detector: Callable[[FRAME_TAG, int, np.ndarray, float], None] = None) -> None:
         self.video_path = video_path
         self.video = Video(self.video_path)
@@ -57,7 +57,10 @@ class FrameFilter:
         self.computed_fps = self.video.computed_fps()
 
         computed_fps = self.computed_fps
-        self.detect_gap_frames = round(computed_fps / SCREEN_DETECTION_FREQUENCY)
+        if video_type == 'tv':
+            self.detect_gap_frames = round(computed_fps / SCREEN_DETECTION_FREQUENCY)
+        else:
+            self.detect_gap_frames = round(computed_fps / FOG_DETECTION_FREQUENCY)
         self.undetect_gap_frames = round(self.detect_gap_frames / DIAGNOSIS_MAGNIFICATION_RATIO)
 
         self.set_end_flag = set_end_flag
@@ -524,18 +527,17 @@ class FogDetector:
     def get_results(self) -> Tuple[Any, Any, Any, Any, Any, Any, Optional[Any], Any, Any]:
 
         self.result = 1
-        frame_no = self.first_frame_no + 1
+        frame_no = self.first_frame_no
         percentage = 1
 
-        # TODO
-        fn, frame = -1, None
+        frame = None
 
-        for fn, _, frame, _ in self.last_psection:
-            if fn == frame_no:
+        for p_fn, _, p_frame, _ in self.last_psection:
+            if p_fn == frame_no:
+                frame = p_frame
                 break
-
-        if fn != frame_no:
-            frame = None
+        # print('frame_no：', frame_no)
+        # print('frame返回：', frame)
 
         return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, percentage, frame, frame_no, frame_no * self.start_msec / self.first_frame_no
 
@@ -725,14 +727,23 @@ class Classifier:
             cone_percentage = np.sum(self.cone_detection_results[cone_idx][1][1]) / (256 * 256 / 1.44) * 100
 
         # TODO
-        fn, frame = -1, None
+        # fn, frame = -1, None
+        #
+        # for fn, _, frame, _ in self.last_psection:
+        #     if fn == frame_no:
+        #         break
+        #
+        # if fn != frame_no:
+        #     frame = None
 
-        for fn, _, frame, _ in self.last_psection:
-            if fn == frame_no:
+        frame = None
+
+        for p_fn, _, p_frame, _ in self.last_psection:
+            if p_fn == frame_no:
+                frame = p_frame
                 break
 
-        if fn != frame_no:
-            frame = None
+        # print('frame返回：', frame)
 
         return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, cone_percentage, frame, frame_no, frame_no * self.start_msec / self.first_frame_no
 
@@ -826,7 +837,6 @@ class Classifier:
             broken_batch_ans = classify_broken_with_batch(self.broken_frame_cache.frames(), BROKEN_DETECTION_BATCH_SIZE)
             cache_results = self.broken_frame_cache.join_nones(broken_batch_ans, clear=True)
             self.broken_detection_results.extend(cache_results)
-
 
         # 使用resnet模型判断是否有荧光粉残留-------------------->
         self.phosphor_frame_cache.push(frame_no, screen)

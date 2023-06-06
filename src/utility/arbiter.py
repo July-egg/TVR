@@ -12,11 +12,11 @@ from utility.dataset import *
 from utility.processer import *
 from utility.test_utils import *
 
-# utility.config.update_detection_weight('mbest')
-# utility.config.update_valid_weight('280782_model_best')
+utility.config.update_detection_weight('mbest')
+utility.config.update_valid_weight('280782_model_best')
 # utility.config.update_state_weight('model_best')
-# # utility.config.update_state_weight('802311_model_best')
-# utility.config.update_segment_weight('CE_Net_276_8')
+utility.config.update_state_weight('802311_model_best')
+utility.config.update_segment_weight('CE_Net_276_8')
 
 
 class SectionalizerDetector:
@@ -137,7 +137,8 @@ class Arbiter:
         print('detect video type:{}'.format(video_type))
         sectionalizer_detector = SectionalizerDetector(self.save_dir) if self.use_detectors else None
 
-        frame_filter = FrameFilter(video_path, set_end_flag=True)  # 获取视频帧
+        frame_filter = FrameFilter(video_path, set_end_flag=True, video_type='tv')  # 获取视频帧
+        fog_frame_filter = FrameFilter(video_path, set_end_flag=True, video_type='fog')  # 获取视频帧
         sectionalizer = Sectionalizer(self.detection_conf, sectionalizer_detector)  # 保存序列化帧(按间隔划分)
         # fps = frame_filter.computed_fps
 
@@ -147,6 +148,7 @@ class Arbiter:
         section_idx = 0
 
         _enum = tqdm.tqdm(frame_filter) if verbose else frame_filter
+        fog_enum = tqdm.tqdm(fog_frame_filter) if verbose else fog_frame_filter
 
         classifier_detector = ClassifierDetector(
             path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
@@ -155,32 +157,26 @@ class Arbiter:
         fogDetetor = FogDetector()
 
         # 遍历视频并批量获取帧
-        for i, (tag, frame_idx, msec, frame) in enumerate(_enum):
-            if progress_queue is not None:
-                progress_queue.put((i, len(frame_filter)))
+        if video_type == 'tv':
+            for i, (tag, frame_idx, msec, frame) in enumerate(_enum):
+                if progress_queue is not None:
+                    progress_queue.put((i, len(frame_filter)))
 
-            # 将当前帧添加到序列中，使用yolo模型检测屏面玻璃位置并保存到frame中
-            if video_type == 'tv':
+                # 将当前帧添加到序列中，使用yolo模型检测屏面玻璃位置并保存到frame中
                 sectionalizer.add_frame(tag, frame_idx, msec, frame)
-            else:
-                sectionalizer.add_frame_fog(tag, frame_idx, msec, frame)
 
-            if sectionalizer.is_ready():
-                # 从序列中获取帧
-                is_over, psection = sectionalizer.retrieve_section()
+                if sectionalizer.is_ready():
+                    # 从序列中获取帧
+                    is_over, psection = sectionalizer.retrieve_section()
 
-                if psection is None:
-                    continue
+                    if psection is None:
+                        continue
 
-                # 将当前批次帧送入检测器进行检测
-                if video_type == 'tv':
+                    # 将当前批次帧送入检测器进行检测
                     classifier.push_partial_section(is_over, psection)
-                else:
-                    fogDetetor.push_partial_section(is_over, psection)
 
-                # 如果当前视频到达末尾
-                if is_over:
-                    if video_type == 'tv':
+                    # 如果当前视频到达末尾
+                    if is_over:
                         # 根据之前检测缓存的结果，调用classify函数判断输出最近检测结果
                         start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = classifier.classify()
 
@@ -194,7 +190,36 @@ class Arbiter:
 
                         if verbose:
                             print(f'{section_idx:02}:', section_results[-1])
-                    else:
+
+                        section_idx += 1
+
+                        # 更新分类器
+                        classifier_detector = ClassifierDetector(
+                            path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
+                        classifier = Classifier(classifier_detector)
+
+                        # if section_idx == 2:
+                        #     break
+        else:
+            for i, (tag, frame_idx, msec, frame) in enumerate(fog_enum):
+                if progress_queue is not None:
+                    progress_queue.put((i, len(fog_frame_filter)))
+
+                # 将当前帧添加到序列中，使用yolo模型检测屏面玻璃位置并保存到frame中
+                sectionalizer.add_frame_fog(tag, frame_idx, msec, frame)
+
+                if sectionalizer.is_ready():
+                    # 从序列中获取帧
+                    is_over, psection = sectionalizer.retrieve_section()
+
+                    if psection is None:
+                        continue
+
+                    # 将当前批次帧送入检测器进行检测
+                    fogDetetor.push_partial_section(is_over, psection)
+
+                    # 如果当前视频到达末尾
+                    if is_over:
                         start_frame_no, end_frame_no, start_msec, end_msec, section_cat, percentage, key_frame, frame_no, frame_msec = fogDetetor.get_results()
 
                         fog_section_results.append((
@@ -205,16 +230,13 @@ class Arbiter:
                         if verbose:
                             print(f'{section_idx:02}:', fog_section_results[-1])
 
-                    section_idx += 1
+                        section_idx += 1
 
-                    # 更新分类器
-                    classifier_detector = ClassifierDetector(
-                        path.join(self.save_dir, f'{section_idx:02}')) if self.use_detectors else None
-                    classifier = Classifier(classifier_detector)
-                    fogDetetor = FogDetector()
+                        # 更新分类器
+                        fogDetetor = FogDetector()
 
-                    # if section_idx == 2:
-                    #     break
+                        # if section_idx == 2:
+                        #     break
 
         print(f'end: {datetime.now().strftime("%H-%M-%S")}')
 

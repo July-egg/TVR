@@ -73,11 +73,9 @@ async def detectOne():
 
     # 对单个视频文件进行检测
     has_examined_video = on_examine_one_video(dest_dir, idx, controller, video_type)
-    # has_examined_video = True
 
     print('是否检测完成：', has_examined_video)
 
-    # TODO 把被动返回检测结果变成get_result用户主动拉取
     if has_examined_video:
         summary_path = dest_dir + '/' + Path(controller.viewmodel.get(idx).video_path()).stem + '/summary.json'
         print(summary_path)
@@ -142,7 +140,8 @@ def getResults():
         'ConeResidue': '锥体玻璃残留',
         'PhosphorResidue': '荧光粉',
         'PhosphorWater': '荧光粉(水印残留)',
-        'PhosphorWhite': '荧光粉(白印残留)'
+        'PhosphorWhite': '荧光粉(白印残留)',
+        'Fog': '漏氟'
     }
     wait_time = 10
     while wait_time > 0:
@@ -187,7 +186,7 @@ def getImage():
     print('img文件路径:' + img_path)
     # imgs = [f for f in os.listdir(img_path) if os.path.isfile(f)]
 
-    wait_time = 10
+    wait_time = 3
     while wait_time > 0:
         if os.path.isfile(img_path):
             # img_stream = open(img_path+img, 'rb').read()
@@ -201,7 +200,7 @@ def getImage():
         else:
             wait_time -= 1
             print('未检测到image文件,继续检测{:d}次'.format(wait_time))
-            time.sleep(10)
+            time.sleep(1)
 
     return Response('error')
 
