@@ -40,15 +40,10 @@ def on_examine_one_video(dest_dir, idx, controller, video_type) -> bool:
         if has_examined:
             return True
         else:
-            try:
-                print('开始进行检测\n')
-                controller.examine_video(idx, dest_dir, video_type)
-                while controller.get_processing():
-                    print("正在检测中...")
-                    time.sleep(10)
-            except:
-                print('检测出错！')
-                return False
+            controller.examine_video(idx, dest_dir, video_type)
+            while controller.get_processing():
+                print("正在检测中...")
+                time.sleep(10)
             return True
     return False
 
@@ -60,15 +55,11 @@ def _examine_all_videos(dest_dir, indexes, controller, video_type) -> bool:
             if has_examined:
                 continue
             else:
-                try:
-                    print('开始检测第{:d}号视频\n'.format(idx))
-                    controller.examine_video(idx, dest_dir, video_type)
-                    while controller.get_processing():
-                        print("正在检测中...")
-                        time.sleep(10)
-                except:
-                    print('第{:d}号视频检测出错！'.format(idx))
-                    return False
+                controller.examine_video(idx, dest_dir, video_type)
+
+        while controller.get_processing():
+            print("正在检测中...")
+            time.sleep(10)
         return True
     return False
 
@@ -177,7 +168,7 @@ def addVideo(file, video_type):
     if not os.path.exists(file_path):
         os.mkdir(file_path)  # 创建文件夹
     file_path = os.path.join(file_path, file.filename.split('/')[-1])
-    print(file.filename)
+    print(file_path)
     if os.path.exists(file_path):
         os.remove(file_path)
     with open(file_path, "wb+") as out_file:
@@ -253,7 +244,7 @@ def getImage():
     data = request.get_json(silent=True)
     name = data['name']
     idx = data['idx']
-    img_path = dest_dir + '/' + name + '/images/00' + str(idx) + '.jpg'
+    img_path = dest_dir + '/' + name + '/images/' + f'{idx:03}.jpg'
     print('img文件路径:' + img_path)
     # imgs = [f for f in os.listdir(img_path) if os.path.isfile(f)]
 
@@ -313,10 +304,13 @@ if __name__ == '__main__':
     #     messagebox.showinfo("提示", "请先选择检测结果保存的文件夹")
     #     dest_dir = filedialog.askdirectory()  # 选择文件夹
     #     print('\n检测结果保存地址：', dest_dir)
-    config.load_config()
     filepath = config.get_last_video_dir()
-    if os.path.exists(filepath):
-        shutil.rmtree(filepath)
+    tvfilepath = os.path.join(filepath, 'tv')
+    fogfilepath = os.path.join(filepath, 'fog')
+    if os.path.exists(tvfilepath):
+        shutil.rmtree(tvfilepath)
+    if os.path.exists(fogfilepath):
+        shutil.rmtree(fogfilepath)
     dest_dir = config.get_last_save_dir()
     app.run(host='127.0.0.1', port=5000)
 

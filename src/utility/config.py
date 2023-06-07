@@ -12,48 +12,48 @@ __data_dir.mkdir(exist_ok=True)
 
 __assets_dir = __app_dir / 'assets'
 
-config = {}
+loaded_config = {}
+
 
 def load_config() -> None:
-    global config
+    global loaded_config
 
     config_file = __data_dir / 'config.json'
     if config_file.exists():
         with open(str(config_file), 'r', encoding='utf-8') as f:
-            config = json.load(f)
+            loaded_config = json.load(f)
+    # return loaded_config
+
 
 def save_config() -> None:
-    global config
+    global loaded_config
 
     config_file = __data_dir / 'config.json'
     if config_file.exists():
         os.remove(str(config_file))
 
     with open(str(config_file), 'x', encoding='utf-8') as f:
-        json.dump(config, f, ensure_ascii=False, indent=4)
+        json.dump(loaded_config, f, ensure_ascii=False, indent=4)
 
 
 def get_default_font() -> str:
-    global config
+    global loaded_config
 
-    if 'default_font' in config:
-        return config['default_font']
+    if 'default_font' in loaded_config:
+        return loaded_config['default_font']
     else:
         return os.path.join(__assets_dir, 'arial.ttf')
 
 
 def _get_home_directory() -> str:
-    if 'HOME' in os.environ:
-        return os.environ['HOME']
-    else:
-        return os.path.expanduser('~')
+    return str(__app_dir)
 
 
 def get_last_video_dir() -> str:
-    global config
+    global loaded_config
 
-    if 'last_video_dir' in config:
-        last_file_dir = config['last_video_dir']
+    if 'last_video_dir' in loaded_config:
+        last_file_dir = loaded_config['last_video_dir']
         if os.path.exists(last_file_dir):
             return last_file_dir
         else:
@@ -63,7 +63,7 @@ def get_last_video_dir() -> str:
 
 
 def update_last_video_dir(p: Union[str, List[str]]) -> None:
-    global config
+    global loaded_config
 
     if isinstance(p, List):
         p = os.path.commonprefix(p)
@@ -76,14 +76,14 @@ def update_last_video_dir(p: Union[str, List[str]]) -> None:
     if not path.exists() or path.is_file():
         path = path.parent
 
-    config['last_video_dir'] = str(path)
+    loaded_config['last_video_dir'] = str(path)
 
 
 def get_last_save_dir() -> str:
-    global config
+    global loaded_config
 
-    if 'last_save_dir' in config:
-        last_save_dir = config['last_save_dir']
+    if 'last_save_dir' in loaded_config:
+        last_save_dir = loaded_config['last_save_dir']
         if os.path.exists(last_save_dir):
             return last_save_dir
         else:
@@ -93,108 +93,111 @@ def get_last_save_dir() -> str:
 
 
 def update_last_save_dir(p: str) -> None:
-    global config
+    global loaded_config
 
     if not p:
         return
 
-    config['last_save_dir'] = p
+    loaded_config['last_save_dir'] = p
 
 
 def get_detection_weight() -> str:
-    global config
+    global loaded_config
 
-    if 'detection_weight' in config:
-        return config['detection_weight']
+    if 'detection_weight' in loaded_config:
+        return loaded_config['detection_weight']
     else:
         return 'yolov5s'
 
-def get_detection_weight_yolov7() -> str:
-    global config
 
-    if 'detection_weight_yolov7' in config:
-        return config['detection_weight_yolov7']
+def get_detection_weight_yolov7() -> str:
+    global loaded_config
+
+    if 'detection_weight_yolov7' in loaded_config:
+        return loaded_config['detection_weight_yolov7']
     else:
         return 'yolov7w6'
 
-def update_detection_weight(weight: str) -> None:
-    global config
 
-    config['detection_weight'] = weight
+def update_detection_weight(weight: str) -> None:
+    global loaded_config
+
+    loaded_config['detection_weight'] = weight
 
 
 def get_state_weight() -> str:
-    global config
+    global loaded_config
 
-    if 'state_weight' in config:
-        return config['state_weight']
+    if 'state_weight' in loaded_config:
+        return loaded_config['state_weight']
     else:
         return 'model_best'
 
 
 def update_state_weight(weight: str) -> None:
-    global config
+    global loaded_config
 
-    config['state_weight'] = weight
+    loaded_config['state_weight'] = weight
 
 
 def get_valid_weight() -> str:
-    global config
+    global loaded_config
 
-    if 'valid_weight' in config:
-        return config['valid_weight']
+    if 'valid_weight' in loaded_config:
+        return loaded_config['valid_weight']
     else:
         return 'model_best'
 
 
 def update_valid_weight(weight: str) -> None:
-    global config
+    global loaded_config
 
-    config['valid_weight'] = weight
+    loaded_config['valid_weight'] = weight
 
 
 def get_segment_weight() -> str:
-    global config
+    global loaded_config
 
-    if 'segmentation_weight' in config:
-        return config['segmentation_weight']
+    if 'segmentation_weight' in loaded_config:
+        return loaded_config['segmentation_weight']
     else:
         return 'model_best'
 
-def get_fog_weight() -> str:
-    global config
 
-    if 'fog_weight' in config:
-        return config['fog_weight']
+def get_fog_weight() -> str:
+    global loaded_config
+
+    if 'fog_weight' in loaded_config:
+        return loaded_config['fog_weight']
     else:
         return 'model_best'
 
 
 def update_segment_weight(weight: str) -> None:
-    global config
+    global loaded_config
 
-    config['segmentation_weight'] = weight
+    loaded_config['segmentation_weight'] = weight
 
 
 def get_batch_info() -> dict:
-    global config
+    global loaded_config
 
-    if 'batch_info' in config:
-        return config['batch_info']
+    if 'batch_info' in loaded_config:
+        return loaded_config['batch_info']
     else:
-        config['batch_info'] = {
+        loaded_config['batch_info'] = {
             'detection': 2,
             'state_test': 32,
             'broken_test': 32,
             'segmentation': 1
         }
-        return config['batch_info']
+        return loaded_config['batch_info']
 
 
 def update_batch_info(model_cat, bs) -> None:
-    global config
+    global loaded_config
 
-    config['batch_info'][model_cat] = bs
+    loaded_config['batch_info'][model_cat] = bs
 
 
 def get_html_template_file() -> str:
