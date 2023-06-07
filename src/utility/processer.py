@@ -527,7 +527,7 @@ class FogDetector:
     def get_results(self) -> Tuple[Any, Any, Any, Any, Any, Any, Optional[Any], Any, Any]:
 
         self.result = 1
-        frame_no = self.first_frame_no
+        frame_no = self.last_frame_no
         percentage = 1
 
         frame = None

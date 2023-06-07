@@ -84,8 +84,8 @@ def _add_video(video_path_queue: queue.Queue, controller):
         controller._add_video(video_path)
 
 
-# MainWindowController 负责实现检测功能
-class MainWindowController:
+# MainController 负责实现检测功能
+class MainController:
     def __init__(self, use_detectors):
         self.use_detectors = use_detectors
 

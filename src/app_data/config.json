@@ -11,7 +11,7 @@
     "state_weight": "model_best",
     "segmentation_weight": "CE_Net_276_8",
     "fog_weight": "bbox_mAP_epoch_250",
-    "last_video_dir": "C:\\Users\\jyh\\Desktop\\TVR\\video",
+    "last_video_dir": "./temp",
     "last_save_dir": "./results",
     "last_username": "admin",
     "last_password": "12345678",
