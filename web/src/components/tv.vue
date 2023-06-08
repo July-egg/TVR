@@ -3,7 +3,7 @@
         <div class="left">
             <div class="video" style="height: 385px; width: 645px; line-height: 385px;margin: 0;">
                 <!--     没有打开视频文件时，显示＋号           -->
-                <input type="file" id="file" hidden @change="fileChange" accept="video/*" multiple="multiple">
+                <input type="file" id="file" hidden @change="fileChange" accept=".mp4" multiple="multiple">
                 <div @click="btnChange('file')" style="width:100%; height:100%; object-fit:fill; display: flex;
                      box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);" v-if="videoEmpty">
                     <div style="display: flex; justify-content: space-around; align-content: center;margin: auto;">
@@ -62,7 +62,7 @@
                  border-radius: 10px; padding: 0;border: none;"><b>添加文件夹</b></el-button>
             </div>
 
-            <input type="file" id="folder" accept="video/*" hidden @change="fileChange" webkitdirectory>
+            <input type="file" id="folder" accept=".mp4" hidden @change="fileChange" webkitdirectory>
             <div class="files" style="height: 340px; margin: 0; overflow-y: scroll;overflow-x: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);">
                 <div class="each" v-for="(f,i) in files" style="height: 25px; line-height: 25px; font-size: 20px;">
                     <div :class="i == presentIdx? 'chosen': 'unchosen'" >
@@ -101,16 +101,14 @@
             </div>
 
             <div class="progress" style="height: 50px; margin-top: 15px; line-height: 50px;">
-                <div style="line-height: 20px; font-size: 16px; ">当前检测进度</div>
-                <el-progress :percentage="50" style="line-height: 30px; font-size: 22px;"></el-progress>
+                <div style="line-height: 20px; font-size: 16px; ">当前检测进度({{num}}/{{total}})</div>
+                <el-progress :percentage="ratio" style="line-height: 30px; font-size: 20px;"></el-progress>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-    import {ref} from 'vue'
-    let showTimeLine = ref('none')
     export default {
         name: "tv",
         data(){
@@ -119,15 +117,22 @@
                 audit:{
                     'person':'', 'cub':'', 'time':this.timeNow, 'note':''
                 },
-                dest_dir:'', // 保存文件夹
-                videoCtrl:{
-                    'timeline':true
-                }
+                dest_dir:'',// 保存文件夹
+                ratio:0,// 检测进度条
+                total:0,
+                num:0,
             }
         },
         methods:{
-            detectOne(){
+            async detectOne(){
+                if(this.$store.state.tvDetecting){
+                    alert("有视频正在检测中！")
+                    return
+                }
+
                 console.log('进行单个视频检测')
+                this.total = 1
+                this.num = 1
 
                 // 首先判断是否打开了视频
                 if(this.presentIdx == -1){
@@ -166,15 +171,19 @@
                     formdata.append('audit[]', this.audit[key])
                 }
 
+                // TODO：添加文件名进去
                 for(var k in this.files){
-                    formdata.append('files[]', this.files[k])
+                    // console.log(this.files[k])
+                    formdata.append('files[]', this.files[k].name)
                 }
 
                 const config = {headers: {'Content-Type': 'multipart/form-data'}}
 
                 var name = this.files[this.presentIdx]['name'].split('.')[0]
 
-                this.axios.post('/video/detect', formdata, config)
+                this.$store.commit('detectState', this.detectType)
+
+                await this.axios.post('/video/detect', formdata, config)
                 .then((response) => {
                     console.log(response)
                     if(response.data == 'error'){
@@ -189,9 +198,22 @@
                 .catch((error) => {
                     console.log(error)
                 })
+
+                this.$store.commit('detectState', this.detectType)
+                this.ratio = 0
+                this.total = 0
+                this.num = 0
             },
             async detectMul(){
-                console.log('进行多个视频检测')
+                if(this.$store.state.tvDetecting){
+                    alert("有视频正在检测中！")
+                    return
+                }
+
+                console.log('进行全部视频检测')
+                this.total = this.$store.state.tvList.length
+                this.num = 0
+
                 // 首先判断是否打开了视频
                 if(this.presentIdx == -1){
                     this.$message({
@@ -218,7 +240,8 @@
 
                 // 变量当前视频文件列表，依次进行检测并获取检测结果html
                 for(var i = 0; i < this.files.length; i++){
-                    // console.log('i:', i)
+                    this.num += 1
+
                     let formdata = new FormData();
                     formdata.append('type', this.detectType)
                     formdata.append('idx', i)
@@ -228,10 +251,12 @@
                     }
 
                     for(var k in this.files){
-                        formdata.append('files[]', this.files[k])
+                        formdata.append('files[]', this.files[k].name)
                     }
 
                     var name = this.files[i]['name'].split('.')[0]
+
+                    this.$store.commit('detectState', this.detectType)
 
                     await this.axios.post('/video/detect', formdata, config)
                     .then((response) => {
@@ -244,7 +269,13 @@
                     }).catch((error) => {
                         console.log(error)
                     })
+
+                    this.$store.commit('detectState', this.detectType)
+                    this.ratio = 0
                 }
+
+                this.total = 0
+                this.num = 0
             },
 
             // 打开视频文件与文件夹实现函数
@@ -303,7 +334,7 @@
                 this.axios({
                     method:'post',
                     url:'/video/delete',
-                    data:{'idx':i, 'type':this.$store.state.videoType}
+                    data:{'idx':i, 'type':this.$store.state.videoType, 'name':this.$store.tvList[i]}
                 }).then(res=>{
                     console.log(res)
                 }).catch(err=>{
@@ -340,6 +371,20 @@
                 var res = [{"value":this.$store.state.audit['note']}]
                 callback(res)
             },
+
+            getProgress(){
+                if(this.detecting && this.ratio < 100){
+                    this.axios({
+                        method:'post',
+                        url:'/progress',
+                    }).then(res=>{
+                        // console.log(res.data)
+                        this.ratio = res.data['ratio']
+                    }).catch(err=>{
+                        console.log(err)
+                    })
+                }
+            }
         },
         computed:{
             present(){ // 当前视频文件
@@ -367,6 +412,9 @@
                 const t = new Date();
                 return new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours(), t.getMinutes(), t.getSeconds())
             },
+            detecting(){
+                return this.$store.state.tvDetecting
+            }
         },
         watch:{
             present(newVal, oldVal){
@@ -377,7 +425,27 @@
             },
             files(newVal, oldVal){
                 // console.log('视频文件列表files发生了修改')
+            },
+            '$store.state.tvDetecting':{
+                deep:true,
+                handler(newVal, oldVal){
+                    console.log('detecting值变为', newVal)
+                    var timer
+                    var that = this
+                    if(newVal == true){
+                        // timer = setInterval(function (){
+                        //     that.getProgress()
+                        // },1000)
+                    }else{
+                        // console.log('删除timer')
+                        // clearInterval(timer)
+                        // console.log(timer)
+                    }
+                }
             }
+        },
+        mounted() {
+
         }
     }
 </script>

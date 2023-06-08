@@ -1,5 +1,7 @@
 import axios from "axios";
 
+axios.defaults.retry = 1
+
 // 封装一个网络请求函数
 export function request(config){
   // 1、创建axios实例

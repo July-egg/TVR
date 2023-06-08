@@ -19,7 +19,7 @@ const routes = [
   },
   {
     path:'/home',
-    component: homepage
+    component: homepage,
   },
 ]
 

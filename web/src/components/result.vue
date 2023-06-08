@@ -46,7 +46,8 @@
             </div>
 
             <div style="line-height: 25px; height: 25px; display: flex; justify-content: center; margin-top: 10px;">
-                <el-button type="primary" round @click="getExcel" style="text-align: center;">导出excel文件</el-button>
+                <el-button type="primary" round @click="getExcel"
+                           style="text-align: center; margin: auto;">导出excel文件</el-button>
             </div>
         </div>
     </div>
@@ -110,7 +111,7 @@
                     // 下载excel文件
                     const blob = new Blob([res.data])
                     const link = document.createElement('a')
-                    link.download = file_name // a标签添加属性
+                    link.download = this.present + '.xls' // a标签添加属性
                     link.style.display = 'none'
                     link.href = URL.createObjectURL(blob)
                     document.body.appendChild(link)
@@ -145,7 +146,7 @@
             }
 
         },
-        created() {
+        mounted() {
             // 当打开结果界面时，从后端获取当前结果文件
             if(this.fileNames.length > 0){
                 this.getResult(this.present)

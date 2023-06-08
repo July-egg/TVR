@@ -153,10 +153,7 @@ class MainController:
         self.is_processing = processing
 
     def get_processing(self, ):
-        print("当前运行状态", self.is_processing)
-        return self.is_processing
-
-    def check_processing(self, ):
+        # print("当前运行状态", self.is_processing)
         return self.is_processing
 
     def exit(self, kill_all=False):

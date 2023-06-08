@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 import json
 import base64
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -68,21 +69,21 @@ def _examine_all_videos(dest_dir, indexes, controller, video_type) -> bool:
 async def detectOne():
     global dest_dir
     # 获取前端传递的信息
-    files = request.files.getlist('files[]')  # 获取文件列表，FileStorage类型
+    files = request.form.getlist('files[]')  # 获取文件名列表
     forward_idx = int(request.form.get('idx'))
     video_type = request.form.get('type')
     audit = request.form.getlist('audit[]')
     # executor, workstation, date_time, memo = audit
-    # print(forward_idx, type, files)
+    print(forward_idx, video_type, files)
     # print(executor, workstation, date_time, memo)
-    # print('files', files[forward_idx])
+    print('files', files[forward_idx])
 
     # 获取当前视频的序列号
     idx = forward_idx
     for i in range(len(maincontroller.viewmodel._video_handlers)):
         video_path = maincontroller.viewmodel.get(i).video_path()
         fileName = os.path.basename(video_path)
-        if files[forward_idx].filename == fileName:
+        if files[forward_idx] == fileName:
             idx = i
             print('fileName', fileName)
             print(idx)
@@ -92,6 +93,7 @@ async def detectOne():
 
     # 对单个视频文件进行检测
     has_examined_video = on_examine_one_video(dest_dir, idx, maincontroller, video_type)
+    # has_examined_video = True
 
     print('是否检测完成：', has_examined_video)
 
@@ -114,7 +116,7 @@ async def detectOne():
 async def detectMul():
     global dest_dir
     # 获取前端传递的信息
-    files = request.files.getlist('files[]')  # 获取文件列表，FileStorage类型
+    files = request.form.getlist('files[]')  # 获取文件名列表
     video_type = request.form.get('type')
     audit = request.form.getlist('audit[]')
     # executor, workstation, date_time, memo = audit
@@ -127,7 +129,7 @@ async def detectMul():
         video_path = maincontroller.viewmodel.get(i).video_path()
         fileName = os.path.basename(video_path)
         for j in range(len(files)):
-            if files[j].filename == fileName:
+            if files[j] == fileName:
                 print('fileName', fileName)
                 indexes.append(i)
                 maincontroller.set_video_details(i, audit)
@@ -181,12 +183,24 @@ def addVideo(file, video_type):
 @app.route('/video/delete', methods=['post'])
 def deleteVideo():
     params = request.get_json(silent=True)
-    i, type = params['idx'], params['type']
+    i, type, name = params['idx'], params['type'], params['name']
 
     # TODO：调用controller类
 
     return '删除{}视频文件{}'.format(i, type)
 
+
+# 获取操作时间点函数
+def operateTime(abs, rel, key):
+    abs_time = datetime.strptime(abs, '%H:%M:%S')
+    h, m, s = [int(float(i)) for i in rel.split(':')]
+    rel_delta = timedelta(hours=h, minutes=m, seconds=s)
+    h, m, s = [int(float(i)) for i in key.split(':')]
+    key_delta = timedelta(hours=h, minutes=m, seconds=s)
+    op_time = (abs_time - rel_delta + key_delta).strftime("%H:%M:%S")
+
+    # print(op_time)
+    return op_time
 
 @app.route('/result/info', methods=['post'])
 def getResults():
@@ -222,9 +236,8 @@ def getResults():
                 'results': [
                     [
                         json_info['Proceduces'][i]['SectionIndex'],
-                        json_info['Proceduces'][i]['AbsoluteStartTime'] + '-' + json_info['Proceduces'][i][
-                            'AbsoluteEndTime'],
-                        json_info['Proceduces'][i]['RelativeStartTime'],
+                        json_info['Proceduces'][i]['AbsoluteStartTime'] + '-' + json_info['Proceduces'][i]['AbsoluteEndTime'],
+                        operateTime(json_info['Proceduces'][i]['AbsoluteStartTime'], json_info['Proceduces'][i]['RelativeStartTime'], json_info['Proceduces'][i]['KeyFrameTime']),
                         json_info['Proceduces'][i]['KeyFrameTime'],
                         res_map[json_info['Proceduces'][i]['ExaminationResult']],
                     ] for i in range(json_info['Summary']['Total'])
@@ -284,6 +297,13 @@ def getExcel():
             time.sleep(2)
     return Response('error')
 
+# TODO:实现进度条的实时检测
+@app.route('/progress', methods=['post'])
+def getProgress():
+    i, amount = maincontroller.progress_queue.get()
+    ratio = round(min(100 * i / amount, 100.0), 2)
+    return jsonify({'ratio': ratio})
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--use-detectors', action='store_true')
@@ -296,14 +316,6 @@ if __name__ == '__main__':
     mainviewmodel = ViewModel()
     maincontroller.set_viewmodel(mainviewmodel)
 
-    # 预先设置保存地址
-    # if dest_dir == '':
-    #     # 实例化tkinter
-    #     root = tk.Tk()
-    #     root.withdraw()
-    #     messagebox.showinfo("提示", "请先选择检测结果保存的文件夹")
-    #     dest_dir = filedialog.askdirectory()  # 选择文件夹
-    #     print('\n检测结果保存地址：', dest_dir)
     filepath = config.get_last_video_dir()
     tvfilepath = os.path.join(filepath, 'tv')
     fogfilepath = os.path.join(filepath, 'fog')

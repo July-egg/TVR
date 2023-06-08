@@ -14,8 +14,8 @@ from utility.test_utils import *
 
 utility.config.update_detection_weight('mbest')
 utility.config.update_valid_weight('280782_model_best')
-# utility.config.update_state_weight('model_best')
-utility.config.update_state_weight('802311_model_best')
+utility.config.update_state_weight('model_best')
+# utility.config.update_state_weight('802311_model_best')
 utility.config.update_segment_weight('CE_Net_276_8')
 
 

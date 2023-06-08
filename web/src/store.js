@@ -25,10 +25,12 @@ const state = {
     presentTv: null, // 当前视频文件，跳转到视频检测页面
     presentTvIdx: -1, // 当前视频文件在文件列表中的索引
     tvList:[], // 记录当前视频文件列表
+    tvDetecting: false, // 是否有电视机视频正在进行检测
 
     presentFog: null, // 当前视频文件，跳转到视频检测页面
     presentFogIdx: -1, // 当前视频文件在文件列表中的索引
     fogList:[], // 记录当前视频文件列表
+    fogDetecting:false, // 是否有漏氟视频正在进行检测
 
     // 审查人员信息字典
     audit:{
@@ -74,25 +76,6 @@ const mutations = {
     },
 
     // home页面
-    recentChange(state, files){
-        // 最近使用的文件列表，控制最大数量为5
-        if(files.length >= 5){
-            var t = []
-            for(let i = 0; i <5;i++){
-                t.unshift(files[i])
-            }
-            state.recentFiles = t
-        }
-        else{
-            for(let i = 0; i < files.length; i++){
-                state.recentFiles.unshift(files[i])
-            }
-            while(state.recentFiles.length > 5){
-                state.recentFiles.pop()
-            }
-        }
-        // console.log('recent files: \n', state.recentFiles)
-    },
     openRecent(state, f){
             // 打开最近使用的文件，根据
             if(f.type=='video/mp4'){
@@ -151,6 +134,13 @@ const mutations = {
                 state.presentFogIdx = state.presentFogIdx-1
             }
             state.presentFog = state.fogList[state.presentFogIdx]
+        }
+    },
+    detectState(state, type){
+        if(type=='tv'){
+            state.tvDetecting = !state.tvDetecting
+        }else{
+            state.fogDetecting = !state.fogDetecting
         }
     },
 
