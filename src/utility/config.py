@@ -164,19 +164,40 @@ def get_segment_weight() -> str:
         return 'model_best'
 
 
+def update_segment_weight(weight: str) -> None:
+    global loaded_config
+
+    loaded_config['segmentation_weight'] = weight
+
+
+def get_broken_weight() -> str:
+    global loaded_config
+
+    if 'broken_weight' in loaded_config:
+        return loaded_config['broken_weight']
+    else:
+        return 'ContextSEUNet'
+
+
+def update_broken_weight(weight: str) -> None:
+    global loaded_config
+
+    loaded_config['broken_weight'] = weight
+
+
 def get_fog_weight() -> str:
     global loaded_config
 
     if 'fog_weight' in loaded_config:
         return loaded_config['fog_weight']
     else:
-        return 'model_best'
+        return 'bbox_mAP_epoch_250'
 
 
-def update_segment_weight(weight: str) -> None:
+def update_fog_weight(weight: str) -> None:
     global loaded_config
 
-    loaded_config['segmentation_weight'] = weight
+    loaded_config['fog_weight'] = weight
 
 
 def get_batch_info() -> dict:

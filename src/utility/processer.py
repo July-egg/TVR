@@ -7,6 +7,7 @@ from .tools import index_of_first, index_of_last, max_seq_len, max_seq_len_with_
 from .dip import (
     detect_screen_with_batch,
     classify_broken_with_batch,
+    segment_broken_with_batch,
     classify_state_with_batch,
     crop_square,
     segment_cone_with_batch,
@@ -683,7 +684,6 @@ class Classifier:
         else:
             # 判断是否有锥体玻璃残留
             has_cone_residue, cone_residue_frame_no = self._cone_residue_examination()
-            has_cone_residue = False
             if has_cone_residue:
                 self.result = SECTION_CATEGORY.CONE_RESIDUE
                 frame_no = cone_residue_frame_no
@@ -763,21 +763,41 @@ class Classifier:
         ...
         return False
 
-    def _broken_examination(self) -> bool:
-        tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
-        sub_res = self.broken_detection_results[-tail_range:]
-        broken_max_len, broken_last = max_seq_len_with_torlenance(sub_res, 1,
-                                                                  lambda ans: ans[1] is None or ans[1] > 0.5)
-        not_broken_max_len, not_broken_last = max_seq_len_with_torlenance(sub_res, 1,
-                                                                          lambda ans: ans[1] is None or ans[1] < 0.5)
+    def _broken_examination(self) -> Tuple[bool, Any]:
+        # tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
+        # sub_res = self.broken_detection_results[-tail_range:]
+        # broken_max_len, broken_last = max_seq_len_with_torlenance(sub_res, 1,
+        #                                                           lambda ans: ans[1] is None or ans[1] > 0.5)
+        # not_broken_max_len, not_broken_last = max_seq_len_with_torlenance(sub_res, 1,
+        #                                                                   lambda ans: ans[1] is None or ans[1] < 0.5)
+        #
+        # if broken_max_len > not_broken_max_len:
+        #     frame_no = sub_res[broken_last][0]
+        #     return True, frame_no
+        # else:
+        #     return False, -1
 
-        if broken_max_len > not_broken_max_len:
+        broken_threshold = 10
+        broken_res = [(frame_no, None if broken_ans is None else broken_ans[1]) for frame_no, broken_ans in self.broken_detection_results]
+        head_range = int(round(3.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
+        tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
+        sub_res1 = broken_res[:head_range]
+        sub_res2 = broken_res[-tail_range:]
+        sub_res = sub_res1 + sub_res2
+        # sub_res = broken_res
+        # print(sub_res)
+        broken_max_len, broken_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1])
+
+        print('broken_max_len:', broken_max_len)
+        if broken_max_len > broken_threshold:
+            while sub_res[broken_last][1] is None:
+                broken_last -= 1
             frame_no = sub_res[broken_last][0]
             return True, frame_no
         else:
             return False, -1
 
-    def _phosphor_residue_examination(self) -> bool:
+    def _phosphor_residue_examination(self) -> Tuple[bool, Any]:
         phosphor_max_len, clean_last = max_seq_len(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] < 0.5)
 
         # pass_max_len, clean_last = max_seq_len(self.phosphor_detection_results, idx=0)
@@ -812,7 +832,7 @@ class Classifier:
         #     frame_no = self.phosphor_detection_results[clean_last][0]
         #     return 0, frame_no
 
-    def _cone_residue_examination(self) -> bool:
+    def _cone_residue_examination(self) -> Tuple[bool, Any]:
         cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in self.cone_detection_results]
         tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
         sub_res = cone_res[-tail_range:]
@@ -831,16 +851,17 @@ class Classifier:
     def _push_frame(self, frame_no, frame, bbox, is_last_frame) -> None:
         screen = self._crop_screen(frame, bbox)  # 将屏面玻璃分割出来
 
-        # 使用resnet判断是否存在碎屏-------------------->
-        self.broken_frame_cache.push(frame_no, screen)
+        # 使用分割网络判断是否存在碎屏-------------------->
+        self.broken_frame_cache.push(frame_no, frame)
         if self.broken_frame_cache.is_full() or is_last_frame:
-            broken_batch_ans = classify_broken_with_batch(self.broken_frame_cache.frames(), BROKEN_DETECTION_BATCH_SIZE)
+            broken_batch_ans = segment_broken_with_batch(self.broken_frame_cache.frames(), BROKEN_DETECTION_BATCH_SIZE)
+            broken_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 20 else 0) for mask in broken_batch_ans]
             cache_results = self.broken_frame_cache.join_nones(broken_batch_ans, clear=True)
             self.broken_detection_results.extend(cache_results)
 
         # 使用resnet模型判断是否有荧光粉残留-------------------->
         self.phosphor_frame_cache.push(frame_no, screen)
         if self.phosphor_frame_cache.is_full() or is_last_frame:
-            phosphor_batch_ans = classify_state_with_batch(self.phosphor_frame_cache.frames(),PHOSPHOR_DETECTION_BATCH_SIZE)
+            phosphor_batch_ans = classify_state_with_batch(self.phosphor_frame_cache.frames(), PHOSPHOR_DETECTION_BATCH_SIZE)
             cache_results = self.phosphor_frame_cache.join_nones(phosphor_batch_ans, clear=True)
             self.phosphor_detection_results.extend(cache_results)

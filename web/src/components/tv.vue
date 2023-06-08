@@ -121,11 +121,12 @@
                 ratio:0,// 检测进度条
                 total:0,
                 num:0,
+                timer:null,
             }
         },
         methods:{
             async detectOne(){
-                if(this.$store.state.tvDetecting){
+                if(this.$store.state.tvDetecting || this.$store.state.fogDetecting){
                     alert("有视频正在检测中！")
                     return
                 }
@@ -179,7 +180,7 @@
 
                 const config = {headers: {'Content-Type': 'multipart/form-data'}}
 
-                var name = this.files[this.presentIdx]['name'].split('.')[0]
+                var name = this.files[this.presentIdx]['name'].split('.mp4')[0]
 
                 this.$store.commit('detectState', this.detectType)
 
@@ -188,8 +189,13 @@
                     console.log(response)
                     if(response.data == 'error'){
                         console.error('视频' + name +'检测失败')
-                        alert('视频' + name +'检测失败')
+                        alert('视频' + name +'检测失败！')
                     }else{
+                        this.$message({
+                          message: '视频' + name +'检测完成!',
+                          type: 'info',
+                          center: true
+                        });
                         this.$store.dispatch('addResultA', name)
                     }
                     // const blob = new Blob([response.data], {'type': 'text/html'})
@@ -205,7 +211,7 @@
                 this.num = 0
             },
             async detectMul(){
-                if(this.$store.state.tvDetecting){
+                if(this.$store.state.tvDetecting || this.$store.state.fogDetecting){
                     alert("有视频正在检测中！")
                     return
                 }
@@ -254,7 +260,7 @@
                         formdata.append('files[]', this.files[k].name)
                     }
 
-                    var name = this.files[i]['name'].split('.')[0]
+                    var name = this.files[i]['name'].split('.mp4')[0]
 
                     this.$store.commit('detectState', this.detectType)
 
@@ -265,6 +271,11 @@
                             alert('视频' + name +'检测失败')
                         }else{
                             this.$store.dispatch('addResultA', name)
+                            this.$message({
+                              message: '视频' + name +'检测完成!',
+                              type: 'info',
+                              center: true
+                            });
                         }
                     }).catch((error) => {
                         console.log(error)
@@ -329,17 +340,17 @@
             },
             deleteVideo(i){
                 console.log('删除视频文件', this.files[i].name)
-                this.$store.commit('deleteVideo', [i, this.$store.state.videoType])
                 // TODO:根据给定的i与type删除指定的视频文件
                 this.axios({
                     method:'post',
                     url:'/video/delete',
-                    data:{'idx':i, 'type':this.$store.state.videoType, 'name':this.$store.tvList[i]}
+                    data:{'idx':i, 'type':this.$store.state.videoType, 'name':this.$store.state.tvList[i].name}
                 }).then(res=>{
                     console.log(res)
                 }).catch(err=>{
                     console.log(err)
                 })
+                this.$store.commit('deleteVideo', [i, this.$store.state.videoType])
             },
 
             // 以下是审计人员信息处理函数
@@ -373,17 +384,29 @@
             },
 
             getProgress(){
-                if(this.detecting && this.ratio < 100){
-                    this.axios({
+                let self = this
+                if(this.detecting && this.ratio <= 100){
+                    self.axios({
                         method:'post',
                         url:'/progress',
                     }).then(res=>{
-                        // console.log(res.data)
                         this.ratio = res.data['ratio']
+                        setTimeout(()=>{
+                          self.getProgress()
+                        }, 500)
                     }).catch(err=>{
                         console.log(err)
                     })
                 }
+            },
+            startTimer(){
+                this.timer = setInterval(()=>{
+                      this.getProgress()
+                },1000)
+            },
+            stopTimer(){
+                clearInterval(this.timer)
+                this.timer = null
             }
         },
         computed:{
@@ -430,22 +453,16 @@
                 deep:true,
                 handler(newVal, oldVal){
                     console.log('detecting值变为', newVal)
-                    var timer
-                    var that = this
-                    if(newVal == true){
-                        // timer = setInterval(function (){
-                        //     that.getProgress()
-                        // },1000)
-                    }else{
-                        // console.log('删除timer')
-                        // clearInterval(timer)
-                        // console.log(timer)
+                    if(newVal==true){
+                      this.getProgress()
                     }
                 }
             }
         },
         mounted() {
-
+            if(this.$store.state.tvDetecting){
+                this.getProgress()
+            }
         }
     }
 </script>
@@ -563,5 +580,24 @@ video::-webkit-media-controls-current-time-display{
 video::-webkit-media-controls-time-remaining-display {
     /*display: none;*/
     opacity: 100%;
+}
+
+::v-deep .el-progress .el-progress-bar{
+  height: 20px;
+  line-height: 20px;
+  padding: 0;
+}
+
+::v-deep .el-progress .el-progress-bar .el-progress-bar__outer{
+  width: 185px;
+  height: 20px;
+  line-height: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+
+::v-deep .el-progress .el-progress__text{
+  width: 52px;
+  margin: 0;
 }
 </style>

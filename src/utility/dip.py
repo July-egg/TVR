@@ -310,6 +310,29 @@ def classify_broken_with_batch(images: List[np.ndarray], bs: int):
     return ret
 
 
+def segment_broken_with_batch(images: List[np.ndarray], bs: int):
+    from dllibs.broken_net import broken_net
+
+    broken_net.load_model()
+
+    ret = []
+
+    resized_images = [resize(image, 512, 512, 'cubic')[1] for image in images]
+
+    for i in range(0, len(resized_images), bs):
+        bi, bj = i, i + bs
+        bimages = resized_images[bi:bj]
+
+        arrays = stack_images(bimages)
+        preds = broken_net.segment(arrays)
+        # printpreds = preds, np.sum(preds) // 255
+        # print(printpreds)
+
+        ret.extend(preds)
+
+    return ret
+
+
 # 判断是否存在锥屏分离现象
 def segment_cone_with_batch(images: List[np.ndarray], bs: int):
     from dllibs.seg_net import seg_net
@@ -365,16 +388,23 @@ def detect_fog_with_batch(images: List[np.ndarray], bs: int, conf_thres=0.3) -> 
     return ret
 
 
-# if __name__ == '__main__':
-#     # imgfile1 = r"D:\screenproject\YOLO\fogcoco2\images\%E7%A9%BA%E8%B0%83%E4%B8%80%E7%BA%BF%E6%8A%BD%E6%B0%9F%E5%B7%A5%E4%BD%8D_1ECF1F98_1669260038_1.mp4#t=4.55.jpg"
-#     # imgfile2 = r"D::\screenproject\YOLO\fogcoco2\images\%E7%A9%BA%E8%B0%83%E4%B8%80%E7%BA%BF%E6%8A%BD%E6%B0%9F%E5%B7%A5%E4%BD%8D_1ECF1F98_1669260038_1.mp4#t=4.55.jpg"
-#     imgfile1 = r"D:\screenproject\brokendataset\brokendata\train\%E5%B1%8F%E9%94%A5%E7%8E%BB%E7%92%831%E5%8F%B7%E5%B7%A5%E4%BD%8D_1C7E5DA0_1679535034_1.mp4#t=25.933333.jpg"
-#     imgfile2 = r"D:\screenproject\brokendataset\brokendata\train\%E5%B1%8F%E9%94%A5%E7%8E%BB%E7%92%831%E5%8F%B7%E5%B7%A5%E4%BD%8D_251E5420_1679535679_1.mp4#t=3.4.jpg"
-#     img1 = mmcv.imread(imgfile1)
-#     img2 = mmcv.imread(imgfile2)
-#     imgs = []
-#     imgs.append(img1)
-#     imgs.append(img2)
-#     # print_result = detect_fog_with_batch(imgs, 2, conf_thres=0.3)
-#     print_result = detect_screen_with_batch(imgs, 2, conf_thres=0.5)
-#     print(print_result)
+if __name__ == '__main__':
+    # imgfile1 = r"D:\screenproject\YOLO\fogcoco2\images\%E7%A9%BA%E8%B0%83%E4%B8%80%E7%BA%BF%E6%8A%BD%E6%B0%9F%E5%B7%A5%E4%BD%8D_1ECF1F98_1669260038_1.mp4#t=4.55.jpg"
+    # imgfile2 = r"D::\screenproject\YOLO\fogcoco2\images\%E7%A9%BA%E8%B0%83%E4%B8%80%E7%BA%BF%E6%8A%BD%E6%B0%9F%E5%B7%A5%E4%BD%8D_1ECF1F98_1669260038_1.mp4#t=4.55.jpg"
+    imgfile1 = r"D:\screenproject\brokendataset\brokendata\train\%E5%B1%8F%E9%94%A5%E7%8E%BB%E7%92%831%E5%8F%B7%E5%B7%A5%E4%BD%8D_1C7E5DA0_1679535034_1.mp4#t=25.933333.jpg"
+    # imgfile2 = r"D:\screenproject\brokendataset\brokendata\train\%E5%B1%8F%E9%94%A5%E7%8E%BB%E7%92%831%E5%8F%B7%E5%B7%A5%E4%BD%8D_251E5420_1679535679_1.mp4#t=3.4.jpg"
+    imgfile2 = r"D:\screenproject\brokendataset\negative\images\%E5%B1%8F%E9%94%A5%E7%8E%BB%E7%92%836%E5%8F%B7%E5%B7%A5%E4%BD%9C_1D246CC8_1681115625_1.mp4#t=74.jpg"
+    img1 = mmcv.imread(imgfile1)
+    img2 = mmcv.imread(imgfile2)
+    imgs = []
+    imgs.append(img1)
+    imgs.append(img2)
+    # print_result = detect_fog_with_batch(imgs, 2, conf_thres=0.3)
+    # print_result = detect_screen_with_batch(imgs, 2, conf_thres=0.5)
+    print_results = segment_broken_with_batch(imgs, 2)
+    print_result = [(mask, np.sum(mask) // 255) for mask in print_results]
+    print(print_result)
+    # for i, print_result in enumerate(print_results):
+    #     path = r'D:\screenproject\brokendataset' + '/' + f'{i:03}.jpg'
+    #     cv2.imwrite(path, print_result)
+

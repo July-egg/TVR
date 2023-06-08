@@ -74,42 +74,45 @@ async def detectOne():
     video_type = request.form.get('type')
     audit = request.form.getlist('audit[]')
     # executor, workstation, date_time, memo = audit
-    print(forward_idx, video_type, files)
+    # print(forward_idx, video_type, files)
     # print(executor, workstation, date_time, memo)
-    print('files', files[forward_idx])
+    # print('files', files[forward_idx])
 
     # 获取当前视频的序列号
-    idx = forward_idx
+    idx = -1
     for i in range(len(maincontroller.viewmodel._video_handlers)):
         video_path = maincontroller.viewmodel.get(i).video_path()
         fileName = os.path.basename(video_path)
         if files[forward_idx] == fileName:
             idx = i
             print('fileName', fileName)
-            print(idx)
+            # print(idx)
 
-    # 设置视频详细信息
-    maincontroller.set_video_details(idx, audit)
+    if idx < 0:
+        Response('未检测到文件{}', files[forward_idx])
+    else:
+        # 设置视频详细信息
+        maincontroller.set_video_details(idx, audit)
 
-    # 对单个视频文件进行检测
-    has_examined_video = on_examine_one_video(dest_dir, idx, maincontroller, video_type)
-    # has_examined_video = True
+        # 对单个视频文件进行检测
+        has_examined_video = on_examine_one_video(dest_dir, idx, maincontroller, video_type)
+        # has_examined_video = True
 
-    print('是否检测完成：', has_examined_video)
+        print('是否检测完成：', has_examined_video)
 
-    if has_examined_video:
-        summary_path = os.path.join(os.path.join(dest_dir, Path(maincontroller.viewmodel.get(idx).video_path()).stem), 'summary.json')
-        # print(summary_path)
-        wait_time = 10
-        while wait_time > 0:
-            if os.path.isfile(summary_path):
-                return Response('success')
-            else:
-                wait_time -= 1
-                print('未检测到结果文件,继续检测{:d}次'.format(wait_time))
-                time.sleep(10)
+        if has_examined_video:
+            summary_path = os.path.join(os.path.join(dest_dir, Path(maincontroller.viewmodel.get(idx).video_path()).stem), 'summary.json')
+            # print(summary_path)
+            wait_time = 10
+            while wait_time > 0:
+                if os.path.isfile(summary_path):
+                    return Response('success')
+                else:
+                    wait_time -= 1
+                    print('未检测到结果文件,继续检测{:d}次'.format(wait_time))
+                    time.sleep(10)
 
-        return Response('error')
+            return Response('error')
 
 
 @app.route('/video/detectAll', methods=['post'])
@@ -159,6 +162,7 @@ def add():
     file = request.files.getlist('files[]')[0]
     video_type = request.form.get('type')
     addVideo(file, video_type)
+    # TODO 检测一下视频文件是否上传成功
     print('已经将视频{}加入列表'.format(file.filename))
     return '已经将{}加入视频列表'.format(file.filename)
 
@@ -185,7 +189,7 @@ def deleteVideo():
     params = request.get_json(silent=True)
     idx, video_type, name = params['idx'], params['type'], params['name']
 
-    print(name)
+    # print(name)
     for i in range(len(maincontroller.viewmodel._video_handlers)):
         video_path = maincontroller.viewmodel.get(i).video_path()
         fileName = os.path.basename(video_path)
@@ -196,6 +200,7 @@ def deleteVideo():
             if os.path.exists(video_path):
                 os.remove(video_path)
                 print('已移除视频：', video_path)
+                break
 
     return '删除{}视频文件{}'.format(idx, video_type)
 
