@@ -5,6 +5,7 @@ from threading import Thread
 from typing import Optional
 import datetime
 import time
+import os
 
 from utility.arbiter import Arbiter
 from utility.serializer import ResultSerializer
@@ -124,7 +125,17 @@ class MainController:
 
     def _add_video(self, video_path):
         print('self.viewmodel._add_video 运行中....')
-        self.viewmodel.add(video_path)
+        is_exist = False
+        for i in range(len(self.viewmodel._video_handlers)):
+            existed_video_path = self.viewmodel.get(i).video_path()
+            existedfileName = os.path.basename(existed_video_path)
+            fileName = os.path.basename(video_path)
+            if existedfileName == fileName:
+                is_exist = True
+        if not is_exist:
+            self.viewmodel.add(video_path)
+        else:
+            print('该视频已经存在于队列中了')
         print('len(self.model._video_handlers): ', len(self.viewmodel._video_handlers))
 
     def add_video(self, video_path):

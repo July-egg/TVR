@@ -179,15 +179,25 @@ def addVideo(file, video_type):
     maincontroller.add_video(file_path)
 
 
-# TODO：根据idx删除视频列表中的文件,需要在controller和viewmodel类中写对应的函数
+# 根据名称删除视频列表中的文件
 @app.route('/video/delete', methods=['post'])
 def deleteVideo():
     params = request.get_json(silent=True)
-    i, type, name = params['idx'], params['type'], params['name']
+    idx, video_type, name = params['idx'], params['type'], params['name']
 
-    # TODO：调用controller类
+    print(name)
+    for i in range(len(maincontroller.viewmodel._video_handlers)):
+        video_path = maincontroller.viewmodel.get(i).video_path()
+        fileName = os.path.basename(video_path)
+        if name == fileName:
+            del_idx = i
+            # print(del_idx)
+            maincontroller.viewmodel.delete(del_idx)
+            if os.path.exists(video_path):
+                os.remove(video_path)
+                print('已移除视频：', video_path)
 
-    return '删除{}视频文件{}'.format(i, type)
+    return '删除{}视频文件{}'.format(idx, video_type)
 
 
 # 获取操作时间点函数

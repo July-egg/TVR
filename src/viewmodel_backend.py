@@ -69,7 +69,13 @@ class ViewModel(QObject):
             self._video_handlers.insert(idx, handler)
 
         # self.video_added.emit(idx)
-        # TODO 传递新的idx
+
+    def delete(self, idx: int = -1):
+        if idx < 0:
+            pass
+        else:
+            self._video_handlers.pop(idx)
+
     def set_progress(self, idx, amount, total):
         # self.progress_changed.emit(idx, amount, total)
         # TODO 传递新的
