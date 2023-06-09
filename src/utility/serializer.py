@@ -368,9 +368,9 @@ class ResultSerializer:
         image_paths = image_saver.save(save_dir, [frame for *_, frame, _, _ in items])
 
         save_items = [(*head, image_path, frame_no, frame_msec) for (*head, _, frame_no, frame_msec), image_path in zip(items, image_paths)]
-        # if len(save_items) > 0:
-        #     for save_item in save_items:
-        #         print(save_item)
+        if len(save_items) > 0:
+            for save_item in save_items:
+                print(save_item)
 
         json_serializer = JsonSerializer()
         json_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)
@@ -381,8 +381,9 @@ class ResultSerializer:
         excel_serializer = ExcelSerializer()
         excel_serializer.serialize(src_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)
 
-        # xls_name = Path(videopath).stem
-        # xls_path = path.abspath(path.join(src_dir, f'{xls_name}.xls')).replace('\\', '/')
+        # TODO 需要进行保存
+        xls_name = Path(videopath).stem
+        xls_path = path.abspath(path.join(src_dir, f'{xls_name}.xls')).replace('\\', '/')
 
-        # html_serializer = HtmlSerializer(xls_path)
-        # html_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)
+        html_serializer = HtmlSerializer(xls_path)
+        html_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)

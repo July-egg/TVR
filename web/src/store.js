@@ -24,13 +24,17 @@ const state = {
     videoType:'tv', // 视频检测类型，tv or fog
     presentTv: null, // 当前视频文件，跳转到视频检测页面
     presentTvIdx: -1, // 当前视频文件在文件列表中的索引
-    tvList:[], // 记录当前视频文件列表
+    tvList:[], // 记录当前视频文件列表，
     tvDetecting: false, // 是否有电视机视频正在进行检测
+    tvTotal:0,
+    tvNum:0,
 
     presentFog: null, // 当前视频文件，跳转到视频检测页面
     presentFogIdx: -1, // 当前视频文件在文件列表中的索引
     fogList:[], // 记录当前视频文件列表
     fogDetecting:false, // 是否有漏氟视频正在进行检测
+    fogTotal:0,
+    fogNum:0,
 
     // 审查人员信息字典
     audit:{
@@ -141,6 +145,31 @@ const mutations = {
             state.tvDetecting = !state.tvDetecting
         }else{
             state.fogDetecting = !state.fogDetecting
+        }
+    },
+
+    clearVideoList(state){
+        state.tvList =[]
+        state.fogList = []
+        state.presentTv= null
+        state.presentTvIdx=-1
+        state.presentFog= null
+        state.presentFogIdx=-1
+    },
+
+
+    totalChange(state, [num, type]){
+        if(type=='tv'){
+            state.tvTotal = num
+        }else{
+            state.fogTotal = num
+        }
+    },
+    numChange(state, [n, type]){
+        if(type=='tv'){
+            state.tvNum = n
+        }else{
+            state.fogNum = n
         }
     },
 

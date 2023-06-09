@@ -40,10 +40,11 @@
 
         <!--    主体内容    -->
         <el-main>
-<!--          <home v-if="page== '1'"></home>-->
-          <result v-if="page=='2'"></result>
-          <fog v-else-if="page=='1-1'"></fog>
-          <tv v-else></tv>
+            <keep-alive>
+              <result v-if="page=='2'"></result>
+              <fog v-else-if="page=='1-1'"></fog>
+              <tv v-else></tv>
+            </keep-alive>
         </el-main>
       </el-container>
 

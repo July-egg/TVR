@@ -3,7 +3,7 @@
         <div class="left">
             <div class="video" style="height: 385px; width: 645px; line-height: 385px;margin: 0;">
                 <!--     没有打开视频文件时，显示＋号           -->
-                <input type="file" id="file" hidden @change="fileChange" accept=".mp4" multiple="multiple">
+                <input type="file" id="file" hidden @change="fileChange" accept="video/*" multiple="multiple">
                 <div @click="btnChange('file')" style="width:100%; height:100%; object-fit:fill; display: flex;
                      box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);" v-if="videoEmpty">
                     <div style="display: flex; justify-content: space-around; align-content: center;margin: auto;">
@@ -22,7 +22,7 @@
                            controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"
                            style="width:100%; height:100%; object-fit:fill;outline:none;"></video>
                     </div>
-                    </div>
+                </div>
             </div>
 
             <div class="audit" style="height: 135px; line-height: 135px; margin-top:5px;box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);">
@@ -39,7 +39,7 @@
                 <div style="height: 30px;line-height: 30px; margin: 3px 15px; display: flex;">
                     <div style="width: 100px; line-height: 28px; "><b>时间: </b></div>
                     <el-date-picker v-model="audit['time']" style="line-height: 30px; height: 30px; width: 260px;"
-                      type="datetime" placeholder="选择日期时间">
+                      type="datetime" placeholder="选择日期时间" @change="auditTimeCg">
                     </el-date-picker>
                 </div>
                 <div style="height: 30px;line-height: 30px; margin: 3px 15px; display: flex;">
@@ -67,7 +67,7 @@
                 <div class="each" v-for="(f,i) in files" style="height: 25px; line-height: 25px; font-size: 20px;">
                     <div :class="i == presentIdx? 'chosen': 'unchosen'" >
                         <span style="width: 10px;line-height: 25px;height: 25px;" >
-                        <el-popconfirm
+                            <el-popconfirm
                           confirm-button-text='好的'
                           cancel-button-text='不用了'
                           icon="el-icon-info"
@@ -115,25 +115,23 @@
             return{
                 // 审计人员信息
                 audit:{
-                    'person':'', 'cub':'', 'time':this.timeNow, 'note':''
+                    'person':'', 'cub':'', 'time':'', 'note':''
                 },
                 dest_dir:'',// 保存文件夹
                 ratio:0,// 检测进度条
-                total:0,
-                num:0,
-                timer:null,
             }
         },
         methods:{
             async detectOne(){
                 if(this.$store.state.tvDetecting || this.$store.state.fogDetecting){
-                    alert("有视频正在检测中！")
+                    this.$message({
+                      showClose: true,
+                      message: '有视频正在检测中！',
+                      type: 'error',
+                      center: true
+                    });
                     return
                 }
-
-                console.log('进行单个视频检测')
-                this.total = 1
-                this.num = 1
 
                 // 首先判断是否打开了视频
                 if(this.presentIdx == -1){
@@ -147,7 +145,7 @@
                 }
 
                 // 检查审查人员信息是否完善
-                if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']==''){
+                if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']=='' || this.audit['time']==null){
                     this.$message({
                       showClose: true,
                       message: '请完善质检人员信息！',
@@ -156,6 +154,10 @@
                     });
                     return
                 }
+
+                console.log('进行单个视频检测')
+                this.$store.commit('totalChange', [1, this.detectType])
+                this.$store.commit('numChange', [1, this.detectType])
 
                 // 将数据传入后端，参数如下：
                 // type：使用的算法类型，fog(空调漏氟)，tv(电视机回收)
@@ -168,14 +170,12 @@
                 formdata.append('idx', this.presentIdx)
 
                 for (var key in this.audit){
-                    // console.log(key, this.audit[key])
                     formdata.append('audit[]', this.audit[key])
                 }
 
-                // TODO：添加文件名进去
+                const files = this.files
                 for(var k in this.files){
-                    // console.log(this.files[k])
-                    formdata.append('files[]', this.files[k].name)
+                    formdata.append('files[]', files[k].name)
                 }
 
                 const config = {headers: {'Content-Type': 'multipart/form-data'}}
@@ -189,7 +189,12 @@
                     console.log(response)
                     if(response.data == 'error'){
                         console.error('视频' + name +'检测失败')
-                        alert('视频' + name +'检测失败！')
+                        this.$message({
+                          showClose: true,
+                          message: '视频' + name +'检测失败！',
+                          type: 'error',
+                          center: true
+                        });
                     }else{
                         this.$message({
                           message: '视频' + name +'检测完成!',
@@ -197,6 +202,7 @@
                           center: true
                         });
                         this.$store.dispatch('addResultA', name)
+                        this.ratio = 100
                     }
                     // const blob = new Blob([response.data], {'type': 'text/html'})
                     // const blobUrl = window.URL.createObjectURL(blob)
@@ -206,19 +212,20 @@
                 })
 
                 this.$store.commit('detectState', this.detectType)
+                this.$store.commit('totalChange', [0, this.detectType])
+                this.$store.commit('numChange', [0, this.detectType])
                 this.ratio = 0
-                this.total = 0
-                this.num = 0
             },
             async detectMul(){
                 if(this.$store.state.tvDetecting || this.$store.state.fogDetecting){
-                    alert("有视频正在检测中！")
+                    this.$message({
+                      showClose: true,
+                      message: "有视频正在检测中！",
+                      type: 'error',
+                      center: true
+                    });
                     return
                 }
-
-                console.log('进行全部视频检测')
-                this.total = this.$store.state.tvList.length
-                this.num = 0
 
                 // 首先判断是否打开了视频
                 if(this.presentIdx == -1){
@@ -232,7 +239,7 @@
                 }
 
                 // 检查审查人员信息是否完善
-                if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']==''){
+                if(this.audit['person'] == '' || this.audit['cub']=='' || this.audit['time']=='' || this.audit['time']==null){
                     this.$message({
                       showClose: true,
                       message: '请完善质检人员信息！',
@@ -242,25 +249,29 @@
                     return
                 }
 
+                console.log('进行全部视频检测')
+                this.$store.commit('totalChange', [this.$store.state.tvList.length, this.detectType])
+                this.$store.commit('numChange', [0, this.detectType])
+
                 const config = {headers: {'Content-Type': 'multipart/form-data'}}
 
+                const files = this.files
                 // 变量当前视频文件列表，依次进行检测并获取检测结果html
-                for(var i = 0; i < this.files.length; i++){
-                    this.num += 1
+                for(let i = 0; i < files.length; i++){
+                    this.$store.commit('numChange', [this.num + 1, this.detectType])
 
                     let formdata = new FormData();
                     formdata.append('type', this.detectType)
                     formdata.append('idx', i)
                     for (var key in this.audit){
-                        // console.log(key, this.audit[key])
                         formdata.append('audit[]', this.audit[key])
                     }
 
                     for(var k in this.files){
-                        formdata.append('files[]', this.files[k].name)
+                        formdata.append('files[]', files[k].name)
                     }
 
-                    var name = this.files[i]['name'].split('.mp4')[0]
+                    var name = files[i]['name'].split('.mp4')[0]
 
                     this.$store.commit('detectState', this.detectType)
 
@@ -268,7 +279,12 @@
                     .then((response) => {
                         if(response.data == 'error'){
                             console.error('视频' + name +'检测失败')
-                            alert('视频' + name +'检测失败')
+                            this.$message({
+                              showClose: true,
+                              message: '视频' + name +'检测失败',
+                              type: 'error',
+                              center: true
+                            });
                         }else{
                             this.$store.dispatch('addResultA', name)
                             this.$message({
@@ -276,6 +292,7 @@
                               type: 'info',
                               center: true
                             });
+                            this.ratio = 100
                         }
                     }).catch((error) => {
                         console.log(error)
@@ -285,8 +302,8 @@
                     this.ratio = 0
                 }
 
-                this.total = 0
-                this.num = 0
+                this.$store.commit('totalChange', [0, this.detectType])
+                this.$store.commit('numChange', [0, this.detectType])
             },
 
             // 打开视频文件与文件夹实现函数
@@ -299,9 +316,8 @@
                 // console.log('files：')
 
                 for(let i = 0; i < files.length; i++){
-                    // console.log(files[i])
                     let url = window.webkitURL.createObjectURL(files[i]) ;
-                    files[i]['url'] = url
+                    files[i]['url'] = url;
                     let unrepeated = true
                     await this.$store.dispatch('fileChangeA', [files[i], this.$store.state.videoType]).then(res=>{
                         // console.log('该文件不在列表中？', unrepeated)
@@ -311,6 +327,7 @@
                     // 将不重复的文件发送到后端进行上传
                     if(unrepeated){
                         let formdata = new FormData();
+                        // console.log(files[i]);
                         formdata.append('files[]', files[i]);
                         formdata.append('type', this.$store.state.videoType);
                         await this.axios.post('/video/add', formdata,{headers: {'Content-Type': 'multipart/form-data'}})
@@ -362,6 +379,10 @@
                 // console.log('审计人员改变')
                 this.$store.commit('auditChange', ['cub', this.audit['cub']])
             },
+            auditTimeCg(){
+                console.log('审计人员time改变'+ this.audit['time'])
+                this.$store.commit('auditChange', ['time', this.audit['time']])
+            },
             auditNoteCg(){
                 // console.log('审计人员改变')
                 this.$store.commit('auditChange', ['note', this.audit['note']])
@@ -375,10 +396,6 @@
                 callback(res)
             },
             queryAuditNote(queryString, callback){
-                var res = [{"value":this.$store.state.audit['note']}]
-                callback(res)
-            },
-            queryDestDir(queryString, callback){
                 var res = [{"value":this.$store.state.audit['note']}]
                 callback(res)
             },
@@ -399,15 +416,6 @@
                     })
                 }
             },
-            startTimer(){
-                this.timer = setInterval(()=>{
-                      this.getProgress()
-                },1000)
-            },
-            stopTimer(){
-                clearInterval(this.timer)
-                this.timer = null
-            }
         },
         computed:{
             present(){ // 当前视频文件
@@ -429,6 +437,12 @@
                 return this.$store.state.presentTv == null
             },
             url() {
+                // if(this.$store.state.presentTv){
+                //     return window.webkitURL.createObjectURL(this.$store.state.presentTv)
+                //     return window.webkitURL.createObjectURL([this.$store.state.presentTv], {type:'video/mpeg'})
+                // }else{
+                //     return ''
+                // }
                 return this.present['url']
             },
             timeNow(){
@@ -437,6 +451,12 @@
             },
             detecting(){
                 return this.$store.state.tvDetecting
+            },
+            total(){
+                return this.$store.state.tvTotal
+            },
+            num(){
+                return this.$store.state.tvNum
             }
         },
         watch:{

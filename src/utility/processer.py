@@ -529,12 +529,12 @@ class FogDetector:
     def get_results(self) -> Tuple[Any, Any, Any, Any, Any, Any, Optional[Any], Any, Any]:
 
         self.result = 1
-        frame_no = self.last_frame_no
-        percentage = 1
+        frame_no = self.last_frame_no - 6
+        percentage = 1  # 目前暂时用来占位
 
         frame = None
-
         for p_fn, _, p_frame, _ in self.last_psection:
+            # print('p_fn', p_fn)
             if p_fn == frame_no:
                 frame = p_frame
                 break
@@ -567,6 +567,13 @@ class Classifier:
                 self._nones.append((frame_no, None))
             else:
                 self._frames.append((frame_no, frame))
+
+        def get(self, ret_frame_no: int) -> [np.ndarray]:
+            ret_frame = None
+            for frame_no, frame in self._frames:
+                if ret_frame_no == frame_no:
+                    ret_frame = frame
+            return ret_frame
 
         def is_full(self) -> bool:
             return len(self._frames) == self.batch_size
@@ -657,7 +664,7 @@ class Classifier:
                 if self.cone_frame_cache.is_full() or idx + 1 == len(self.tail_frames):
                     # 判断锥屏是否分离-------------------->
                     cone_batch_ans = segment_cone_with_batch(self.cone_frame_cache.frames(), CONE_DETECTION_BATCH_SIZE)
-                    cone_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 3 else 0) for mask in cone_batch_ans]
+                    cone_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 1 else 0) for mask in cone_batch_ans]
                     cache_results = self.cone_frame_cache.join_nones(cone_batch_ans, clear=True)
                     self.cone_detection_results.extend(cache_results)
 
@@ -736,9 +743,9 @@ class Classifier:
         # if fn != frame_no:
         #     frame = None
 
-        # 需要一个类变量来存放碎屏的frame结果
         frame = None
-
+        if is_broken:
+            frame = self.broken_frame_cache.get(frame_no)
         for p_fn, _, p_frame, _ in self.last_psection:
             if p_fn == frame_no:
                 frame = p_frame
@@ -746,7 +753,6 @@ class Classifier:
 
         # print('frame返回：', frame)
 
-        # float(frame_count) / fps
         return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, cone_percentage, frame, frame_no, frame_no * self.end_msec / self.last_frame_no
 
     @staticmethod
@@ -779,19 +785,19 @@ class Classifier:
         # else:
         #     return False, -1
 
-        broken_threshold = 10
+        broken_threshold = 9
         broken_res = [(frame_no, None if broken_ans is None else broken_ans[1]) for frame_no, broken_ans in self.broken_detection_results]
-        head_range = int(round(1.0 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
+        # head_range = int(round(3.0 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
         tail_range = int(round(3.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
-        sub_res1 = broken_res[:head_range]
-        sub_res2 = broken_res[-tail_range:]
-        sub_res = sub_res1 + sub_res2
+        # sub_res1 = broken_res[:head_range]
+        sub_res = broken_res[-tail_range:]
+        # sub_res = sub_res1 + sub_res2
 
         # print(sub_res)
         broken_max_len, broken_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1])
 
-        # print('broken_max_len:', broken_max_len)
-        if broken_max_len > broken_threshold:
+        print('broken_max_len:', broken_max_len)
+        if broken_max_len >= broken_threshold:
             while sub_res[broken_last][1] is None:
                 broken_last -= 1
             frame_no = sub_res[broken_last][0]
@@ -803,7 +809,7 @@ class Classifier:
         phosphor_max_len, clean_last = max_seq_len(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] < 0.5)
 
         threshold = 1.0 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO
-        # print('phosphor_max_len:', phosphor_max_len)
+        print('phosphor_max_len:', phosphor_max_len)
 
         # 连续干净的屏面玻璃帧数小于阈值，判定为有荧光粉残留
         if phosphor_max_len <= threshold:
@@ -837,7 +843,7 @@ class Classifier:
         self.broken_frame_cache.push(frame_no, frame)
         if self.broken_frame_cache.is_full() or is_last_frame:
             broken_batch_ans = segment_broken_with_batch(self.broken_frame_cache.frames(), BROKEN_DETECTION_BATCH_SIZE)
-            broken_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 5 else 0) for mask in broken_batch_ans]
+            broken_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 1 else 0) for mask in broken_batch_ans]
             cache_results = self.broken_frame_cache.join_nones(broken_batch_ans, clear=True)
             self.broken_detection_results.extend(cache_results)
 
