@@ -52,7 +52,6 @@ def load_model():
 
     weights = str(ROOT / 'weights' / f'{weight_name}.pth.tar')
 
-    # 不知道电脑的GPU是否可用
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     checkpoint = torch.load(weights, map_location=device)
 
@@ -77,11 +76,9 @@ def classify(imgs):
 
     pred = F.softmax(pred, dim=1)
 
-    # print(pred)
+    # print('pred:', pred)
     # reverse
     # p[0]中保存的是荧光粉清除干净的概率
-    # pred = [1 - p[0].item() for p in pred]
-    # 这里的pred保存的是荧光粉清楚
     pred = [1 - p[0].item() for p in pred]
 
     return pred

@@ -39,7 +39,7 @@ def index_of_last(array: List, func=None, key=None) -> Optional[int]:
 
 # 计算最大的连续的干净的屏面玻璃帧数
 # lambda ans: ans[1] is not None and ans[1] >= 0.5
-def max_seq_len(array: List, func=None, key=None, idx=0) -> Tuple[int, int]:
+def max_seq_len(array: List, func=None, key=None) -> Tuple[int, int]:
     ans = 0
     candidate = 0
 
@@ -51,9 +51,7 @@ def max_seq_len(array: List, func=None, key=None, idx=0) -> Tuple[int, int]:
             item = key(item)
 
         # 该帧荧光粉是否清除干净，array中保存的是荧光粉未清除干净的概率
-        # is_true = func(item) if func is not None else item
-        # 记录当前种类在帧序列中连续最大的数量
-        is_true = np.argmax(item[1]) == idx if func is None else item
+        is_true = func(item) if func is not None else item
 
         if is_true:
             seq_len += 1
@@ -62,8 +60,7 @@ def max_seq_len(array: List, func=None, key=None, idx=0) -> Tuple[int, int]:
             ans = max(ans, seq_len)
             last = candidate
             seq_len = 0
-        ans = max(ans, seq_len)
-        last = candidate if candidate else last
+
     return ans, last
 
 

@@ -87,8 +87,9 @@ class FrameFilter:
                 start_time = datetime.now()
 
             self.idx += 1
-            msec = self.video.pos_mesc()
             frame = self.video.read()
+            # msec = self.video.pos_mesc()
+            msec = 1000 * float(self.idx) / self.fps
 
             if self.detector is not None:
                 frame_read_time = (datetime.now() - start_time).total_seconds()
@@ -356,17 +357,17 @@ class Sectionalizer:
                 section.append((frame_no, msec, frame, bbox))
 
         additional_frames = [(frame_no, msec, frame) for frame_no, msec, frame in undetected_frames if
-                             section_start < frame_no < section_end]
+                             section_start <= frame_no <= section_end]
 
-        # 检测屏幕位置
-        ans = detect_screen_with_batch(
-            (frame for _, _, frame in additional_frames),
-            SCREEN_DETECTION_BATCH_SIZE,
-            self.conf_thres
-        )
+        if len(additional_frames) > 0:
+            ans = detect_screen_with_batch(
+                (frame for _, _, frame in additional_frames),
+                SCREEN_DETECTION_BATCH_SIZE,
+                self.conf_thres
+            )
 
-        for (frame_no, msec, frame), bbox in zip(additional_frames, ans):
-            section.append((frame_no, msec, frame, bbox))
+            for (frame_no, msec, frame), bbox in zip(additional_frames, ans):
+                section.append((frame_no, msec, frame, bbox))
 
         # TODO: 最后很可能有空
 
@@ -437,17 +438,17 @@ class Sectionalizer:
                 section.append((frame_no, msec, frame, bbox))
 
         additional_frames = [(frame_no, msec, frame) for frame_no, msec, frame in undetected_frames if
-                             section_start < frame_no < section_end]
+                             section_start <= frame_no <= section_end]
 
-        # 检测屏幕位置
-        ans = detect_fog_with_batch(
-            (frame for _, _, frame in additional_frames),
-            FOG_DETECTION_BATCH_SIZE,
-            conf_thres=0.3
-        )
+        if len(additional_frames) > 0:
+            ans = detect_fog_with_batch(
+                (frame for _, _, frame in additional_frames),
+                FOG_DETECTION_BATCH_SIZE,
+                conf_thres=0.3
+            )
 
-        for (frame_no, msec, frame), bbox in zip(additional_frames, ans):
-            section.append((frame_no, msec, frame, bbox))
+            for (frame_no, msec, frame), bbox in zip(additional_frames, ans):
+                section.append((frame_no, msec, frame, bbox))
 
         # TODO: 最后很可能有空
 
@@ -540,7 +541,7 @@ class FogDetector:
         # print('frame_no：', frame_no)
         # print('frame返回：', frame)
 
-        return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, percentage, frame, frame_no, frame_no * self.start_msec / self.first_frame_no
+        return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, percentage, frame, frame_no, frame_no * self.end_msec / self.last_frame_no
 
 
 # 屏幕状态种类，按顺序分别是：
@@ -656,7 +657,7 @@ class Classifier:
                 if self.cone_frame_cache.is_full() or idx + 1 == len(self.tail_frames):
                     # 判断锥屏是否分离-------------------->
                     cone_batch_ans = segment_cone_with_batch(self.cone_frame_cache.frames(), CONE_DETECTION_BATCH_SIZE)
-                    cone_batch_ans = [(mask, np.sum(mask) // 255) for mask in cone_batch_ans]
+                    cone_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 3 else 0) for mask in cone_batch_ans]
                     cache_results = self.cone_frame_cache.join_nones(cone_batch_ans, clear=True)
                     self.cone_detection_results.extend(cache_results)
 
@@ -726,7 +727,6 @@ class Classifier:
             )
             cone_percentage = np.sum(self.cone_detection_results[cone_idx][1][1]) / (256 * 256 / 1.44) * 100
 
-        # TODO
         # fn, frame = -1, None
         #
         # for fn, _, frame, _ in self.last_psection:
@@ -736,6 +736,7 @@ class Classifier:
         # if fn != frame_no:
         #     frame = None
 
+        # 需要一个类变量来存放碎屏的frame结果
         frame = None
 
         for p_fn, _, p_frame, _ in self.last_psection:
@@ -745,7 +746,8 @@ class Classifier:
 
         # print('frame返回：', frame)
 
-        return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, cone_percentage, frame, frame_no, frame_no * self.start_msec / self.first_frame_no
+        # float(frame_count) / fps
+        return self.first_frame_no, self.last_frame_no, self.start_msec, self.end_msec, self.result, cone_percentage, frame, frame_no, frame_no * self.end_msec / self.last_frame_no
 
     @staticmethod
     def _crop_screen(frame, bbox) -> np.ndarray:
@@ -779,16 +781,16 @@ class Classifier:
 
         broken_threshold = 10
         broken_res = [(frame_no, None if broken_ans is None else broken_ans[1]) for frame_no, broken_ans in self.broken_detection_results]
-        head_range = int(round(3.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
-        tail_range = int(round(1.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
+        head_range = int(round(1.0 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
+        tail_range = int(round(3.5 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO))
         sub_res1 = broken_res[:head_range]
         sub_res2 = broken_res[-tail_range:]
         sub_res = sub_res1 + sub_res2
-        # sub_res = broken_res
+
         # print(sub_res)
         broken_max_len, broken_last = max_seq_len_with_torlenance(sub_res, 1, key=lambda ans: ans[1])
 
-        print('broken_max_len:', broken_max_len)
+        # print('broken_max_len:', broken_max_len)
         if broken_max_len > broken_threshold:
             while sub_res[broken_last][1] is None:
                 broken_last -= 1
@@ -800,11 +802,8 @@ class Classifier:
     def _phosphor_residue_examination(self) -> Tuple[bool, Any]:
         phosphor_max_len, clean_last = max_seq_len(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] < 0.5)
 
-        # pass_max_len, clean_last = max_seq_len(self.phosphor_detection_results, idx=0)
-        # phosphor_max_len, phosphor_last = max_seq_len(self.phosphor_detection_results, idx=1)
-        # phosphor_water_max_len, phosphor_water_last = max_seq_len(self.phosphor_detection_results, idx=2)
-        # phosphor_white_max_len, phosphor_white_last = max_seq_len(self.phosphor_detection_results, idx=3)
-        threshold = SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO
+        threshold = 1.0 * SCREEN_DETECTION_FREQUENCY * DIAGNOSIS_MAGNIFICATION_RATIO
+        # print('phosphor_max_len:', phosphor_max_len)
 
         # 连续干净的屏面玻璃帧数小于阈值，判定为有荧光粉残留
         if phosphor_max_len <= threshold:
@@ -814,23 +813,6 @@ class Classifier:
         else:
             frame_no = self.phosphor_detection_results[clean_last][0]
             return False, frame_no
-
-        # if pass_max_len <= threshold:
-        #     lens = [phosphor_max_len, phosphor_water_max_len, phosphor_white_max_len]
-        #     i = lens.index(max(lens))
-        #     if i == 0:
-        #         # last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and np.argmax(ans[1])==(i+1))
-        #         frame_no = self.phosphor_detection_results[phosphor_last][0]
-        #     elif i == 1:
-        #         frame_no = self.phosphor_detection_results[phosphor_water_last][0]
-        #     else:
-        #         frame_no = self.phosphor_detection_results[phosphor_white_last][0]
-        #     # last = index_of_last(self.phosphor_detection_results, lambda ans: ans[1] is not None and ans[1] >= 0.5)
-        #     # frame_no = self.phosphor_detection_results[last][0]
-        #     return i + 1, frame_no
-        # else:
-        #     frame_no = self.phosphor_detection_results[clean_last][0]
-        #     return 0, frame_no
 
     def _cone_residue_examination(self) -> Tuple[bool, Any]:
         cone_res = [(frame_no, None if cone_ans is None else cone_ans[1]) for frame_no, cone_ans in self.cone_detection_results]
@@ -855,7 +837,7 @@ class Classifier:
         self.broken_frame_cache.push(frame_no, frame)
         if self.broken_frame_cache.is_full() or is_last_frame:
             broken_batch_ans = segment_broken_with_batch(self.broken_frame_cache.frames(), BROKEN_DETECTION_BATCH_SIZE)
-            broken_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 20 else 0) for mask in broken_batch_ans]
+            broken_batch_ans = [(mask, np.sum(mask) // 255 if np.sum(mask) // 255 > 5 else 0) for mask in broken_batch_ans]
             cache_results = self.broken_frame_cache.join_nones(broken_batch_ans, clear=True)
             self.broken_detection_results.extend(cache_results)
 

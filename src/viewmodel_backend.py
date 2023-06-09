@@ -80,6 +80,8 @@ class ViewModel(QObject):
         # self.progress_changed.emit(idx, amount, total)
         # TODO 传递新的
         if idx == -1:
-            print(f'{100}% remaining: {total}')
+            pass
+            # print(f'{100}% remaining: {total}')
         else:
-            print(f'{min(100 * idx / amount, 100.0):.2f}% ({idx}/{amount}) 等待中：{total}')
+            pass
+            # print(f'{min(100 * idx / amount, 100.0):.2f}% ({idx}/{amount}) 等待中：{total}')

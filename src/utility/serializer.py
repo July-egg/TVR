@@ -368,8 +368,9 @@ class ResultSerializer:
         image_paths = image_saver.save(save_dir, [frame for *_, frame, _, _ in items])
 
         save_items = [(*head, image_path, frame_no, frame_msec) for (*head, _, frame_no, frame_msec), image_path in zip(items, image_paths)]
-        # if len(save_items) != 0:
-        #     print(save_items[0])
+        # if len(save_items) > 0:
+        #     for save_item in save_items:
+        #         print(save_item)
 
         json_serializer = JsonSerializer()
         json_serializer.serialize(save_dir, videopath, fps, executor, workstation, date_time, memo, video_type, save_items)
