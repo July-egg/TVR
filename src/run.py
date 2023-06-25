@@ -217,6 +217,11 @@ def operateTime(abs, rel, key):
     # print(op_time)
     return op_time
 
+
+# TODO:读取结果文件夹页面下的返回列表
+def getResultsList():
+    pass
+
 @app.route('/result/info', methods=['post'])
 def getResults():
     data = request.get_json(silent=True)

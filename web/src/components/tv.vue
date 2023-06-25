@@ -1,7 +1,7 @@
 <template>
     <div class="wrap">
         <div class="left">
-            <div class="video" style="height: 385px; width: 645px; line-height: 385px;margin: 0;">
+            <div class="video">
                 <!--     没有打开视频文件时，显示＋号           -->
                 <input type="file" id="file" hidden @change="fileChange" accept="video/*" multiple="multiple">
                 <div @click="btnChange('file')" style="width:100%; height:100%; object-fit:fill; display: flex;
@@ -14,48 +14,47 @@
 
                 <!--    显示当前打开的视频文件         -->
                 <div class="else" style="width:100%; height:100%; object-fit:fill;" v-else>
-                    <div style="line-height: 25px; font-size: 18px; height: 25px; text-overflow: ellipsis; width: 100%;">
+                    <div style="line-height: 25px;height: 25px;  font-size: 18px; text-overflow: ellipsis; width: 100%;">
                         <b>当前视频文件:&nbsp;</b>{{present.name}}
                     </div>
-                    <div style="width: 100%; height: 360px;text-align: center;">
-                       <video ref="video" controls :src="url" disablePictureInPicture
-                           controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"
-                           style="width:100%; height:100%; object-fit:fill;outline:none;"></video>
-                    </div>
+                    <video ref="video" controls :src="url" disablePictureInPicture
+                         controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"></video>
                 </div>
             </div>
 
-            <div class="audit" style="height: 135px; line-height: 135px; margin-top:5px;box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);">
-                <div style="height: 30px;line-height: 30px; margin: 3px 15px; display: flex; padding-top: 3px">
-                    <div style="width: 100px; line-height: 28px; "><b>审查人员: </b></div>
+            <div class="audit" >
+                <div class="auditInfo">
+                    <div class="auditKey"><span style="line-height: 100%;">审查人员: </span></div>
                     <el-autocomplete v-model="audit['person']" placeholder="请输入审查人员信息" @change="auditPersonCg"
-                     :fetch-suggestions="queryAuditPerson" style="line-height: 30px; height: 30px; width: 260px;"></el-autocomplete>
+                     :fetch-suggestions="queryAuditPerson" style="line-height: 100%; height: 100%; width: 40%;"></el-autocomplete>
                 </div>
-                <div style="height: 30px;line-height: 30px; margin: 3px 15px; display: flex;">
-                    <div style="width: 100px; line-height: 28px; "><b>工位: </b></div>
+                <div class="auditInfo">
+                    <div class="auditKey"><span style="line-height: 100%;">工位: </span></div>
                     <el-autocomplete v-model="audit['cub']" placeholder="请输入工位" @change="auditCubCg"
-                     :fetch-suggestions="queryAuditCub" style="line-height: 30px; height: 30px; width: 260px;"></el-autocomplete>
+                     :fetch-suggestions="queryAuditCub" style="line-height: 100%; height: 100%; width: 40%;"></el-autocomplete>
                 </div>
-                <div style="height: 30px;line-height: 30px; margin: 3px 15px; display: flex;">
-                    <div style="width: 100px; line-height: 28px; "><b>时间: </b></div>
-                    <el-date-picker v-model="audit['time']" style="line-height: 30px; height: 30px; width: 260px;"
+                <div class="auditInfo">
+                    <div class="auditKey"><span style="line-height: 100%;">时间: </span></div>
+                    <el-date-picker v-model="audit['time']" style="line-height: 100%; height: 100%; width: 40%;"
                       type="datetime" placeholder="选择日期时间" @change="auditTimeCg">
                     </el-date-picker>
                 </div>
-                <div style="height: 30px;line-height: 30px; margin: 3px 15px; display: flex;">
-                    <div style="width: 100px; line-height: 28px; "><b>备注: </b></div>
+                <div class="auditInfo">
+                    <div class="auditKey"><span style="line-height: 100%">备注: </span></div>
                     <el-autocomplete v-model="audit['note']" placeholder="请输入备注" @change="auditNoteCg"
-                     :fetch-suggestions="queryAuditNote" style="line-height: 30px; height: 30px; width: 360px;"></el-autocomplete>
+                     :fetch-suggestions="queryAuditNote" style="line-height: 100%; height: 100%; width: 50%;"></el-autocomplete>
                 </div>
             </div>
         </div>
 
         <div class="right">
-            <div style="line-height: 22px; font-size: 18px; display: flex; justify-content: space-between;">
+            <div class="listTitle"
+                 style="line-height: 25px; font-size: 18px; display: flex; justify-content: space-between;">
                 <b>当前视频列表</b>
             </div>
 
-            <div style="line-height: 20px; font-size: 18px; display: flex; justify-content: space-between;">
+            <div class='addBtn'
+                 style="line-height: 25px; font-size: 18px; display: flex; justify-content: space-between;">
                 <el-button type="primary" @click="btnChange('file')" style="font-size: 15px; height: 25px; width:80px;
                  border-radius: 10px; padding: 0;border: none;"><b>添加文件</b></el-button>
                 <el-button type="primary" @click="btnChange('folder')" style="font-size: 15px; height: 25px; width:80px;
@@ -63,7 +62,7 @@
             </div>
 
             <input type="file" id="folder" accept=".mp4" hidden @change="fileChange" webkitdirectory>
-            <div class="files" style="height: 340px; margin: 0; overflow-y: scroll;overflow-x: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);">
+            <div class="files">
                 <div class="each" v-for="(f,i) in files" style="height: 25px; line-height: 25px; font-size: 20px;">
                     <div :class="i == presentIdx? 'chosen': 'unchosen'" >
                         <span style="width: 10px;line-height: 25px;height: 25px;" >
@@ -86,7 +85,8 @@
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: space-around; margin-top: 10px;height: 40px;line-height: 40px;">
+            <div class="detectBtn"
+                style="display: flex; justify-content: space-around; margin-top: 10px;height: 40px;line-height: 40px;">
                 <el-button type="primary" style="width: 100px; height: 40px; border-radius: 12px; border: none; font-size: 18px;
                        box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);text-align: center; padding: 0;"
                         @click="detectOne">
@@ -492,29 +492,91 @@
     /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
     display: flex;
     justify-content: space-between;
-    width: 910px;
-    height: 520px;
-    /*margin: auto;*/
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
 }
 
-.left{
-    /*width: 860px;*/
-    /*height: 680px;*/
+@media only screen and (max-width: 1280px){
+  .left{
+    width: 70%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
 
-    width: 645px;
-    height: 520px;
-    /*background-color: #666666;*/
+  .right{
+      width: 29%;
+      height: 100%;
+  }
 }
 
-.right{
-    /*width: 320px;*/
-    /*height: 680px;*/
+@media only screen and (max-width: 1920px) and (min-width: 1281px){
+  .left{
+    width: 80%;
+    height: 100%;
+  }
 
-    width: 245px;
-    height: 520px;
-    /*background-color: #B3C0D1;*/
+  .right{
+    width: 19%;
+    height: 100%;
+  }
 }
 
+.video{
+  height: 75%; width: 100%; line-height:75%;margin: 0;
+}
+
+video{
+  width:100%;
+  height:calc(100% - 25px);
+  object-fit:fill;
+  outline:none;
+}
+
+/*审计人员信息*/
+.audit{
+  height: 24%;
+  line-height:24%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  vertical-align: middle;
+}
+
+.auditInfo{
+  height:25%;
+  line-height: 25%;
+  padding-left: .5rem;
+  display: flex;
+}
+
+.auditKey{
+  width: 2.5rem;
+  height: 100%;
+  line-height: 100%;
+  display: flex;
+  align-items: center;
+  font: 700 .35rem 宋体;
+}
+
+/* 审计人员信息输入框 */
+::v-deep .el-autocomplete .el-input  .el-input__inner{
+    min-height: 30px;
+    height: 30px;
+}
+
+::v-deep .el-date-editor .el-input__inner{
+    min-height: 30px;
+    height: 30px;
+}
+
+
+
+/*视频列表块*/
 .each .unchosen:hover{
     background-color: #cce8ff;
     opacity: 0.5;
@@ -548,18 +610,12 @@
     border-color: white;
 }
 
-.el-autocomplete {
-    min-height: 28px;
-}
-
-::v-deep .el-autocomplete .el-input  .el-input__inner{
-    min-height: 30px;
-    height: 30px;
-}
-
-::v-deep .el-date-editor .el-input__inner{
-    min-height: 30px;
-    height: 30px;
+.files{
+  margin-top: 5px;
+  height: calc(75% - 55px);
+  overflow-y: scroll;
+  overflow-x: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
 }
 
 /* 控制视频video组件的显示样式 */
@@ -580,7 +636,6 @@ video::-webkit-media-controls-volume-slider {
 video::-webkit-media-controls-enclosure{
     opacity: 25%;
 }
-
 /*//播放按钮*/
 video::-webkit-media-controls-play-button {
     /*display: none;*/
@@ -602,6 +657,8 @@ video::-webkit-media-controls-time-remaining-display {
     opacity: 100%;
 }
 
+
+/*进度条样式*/
 ::v-deep .el-progress .el-progress-bar{
   height: 20px;
   line-height: 20px;

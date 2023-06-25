@@ -157,23 +157,27 @@
 
 <style scoped>
 .wrap{
-    /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
+    width: 100%;
+    height: 100%;
     display: flex;
     justify-content: space-between;
 }
 
-.left{
-    /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
-    width: 700px;
-    height: 520px;
+@media only screen and (max-width: 1280px){
+  .left{
+    width: 70%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .right{
+      width: 29%;
+      height: 100%;
+  }
 }
 
-.right{
-    /*box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);*/
-    width: 200px;
-    height: 520px;
-    /*background-color: #B3C0D1;*/
-}
 
 .each .unchosen:hover{
     background-color: #cce8ff;

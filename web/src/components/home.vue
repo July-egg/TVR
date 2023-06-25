@@ -166,6 +166,8 @@ export default {
     box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
     display: flex;
     justify-content: space-around;
+  width: 100%;
+  height: 100%;
 }
 
 /* 最近使用的文件 */

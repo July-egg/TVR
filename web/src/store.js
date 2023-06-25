@@ -14,7 +14,7 @@ const state = {
     password:'12345678',
 
     //homepage页面，默认为电视机检测页面
-    pageIndex:'1-2', // 当前page索引值：1-1、1-2、2
+    pageIndex:'1-1', // 当前page索引值：1-1、1-2、2
 
     // home页面需要保存的变量
     recentFiles:[], // 最近使用的文件，json与video混杂

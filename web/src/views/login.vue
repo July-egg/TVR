@@ -1,41 +1,41 @@
 <template>
     <div class="login">
-      <h1>
-        <img src="../assets/image/logo_cut.png">
-        <span style="padding-left: 20px"><b>废旧电器回收智能管理平台</b></span>
-      </h1>
+      <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1, user-scalable=yes">
 
-      <div class="warp">
-          <div class="info">
-              <div><h2>用 户 登 录</h2></div>
-
-              <div class="user" style="display: flex; height: 70px; width: 370px; margin: auto; padding-top: 15px;">
-                  <i class="el-icon-user" style="font-size: 40px; margin-right: 25px;"></i>
-                  <el-autocomplete v-model="user" placeholder="请输入用户名" @change="userCg" style="width: 300px; height: 42px;"
-                            :fetch-suggestions="queryUsr" @select="handleSelectUsr"></el-autocomplete>
-              </div>
-              <div class="user" style="display: flex; height: 70px; width: 370px; margin: auto; padding-top: 5px;">
-                  <i class="el-icon-lock" style="font-size: 40px; margin-right: 25px;"></i>
-                  <el-autocomplete v-model="pwd" placeholder="请输入密码" @change="pwdCg" style="width: 300px; height: 42px;"
-                            :fetch-suggestions="queryPwd" @select="handleSelectPwd" type="password"></el-autocomplete>
-              </div>
-
-              <div class="log" style="margin: auto; display: flex; justify-content: center;">
-                  <button style="color: #ffffff; background-color: #4095E5; font-size: 20px; margin-top: 30px;
-                                    width: 125px; border-radius: 10px; padding: 5px; border: none;"
-                          @click="login">
-                      登 录
-                  </button>
-              </div>
-          </div>
-
+      <div class="header">
+        <img src="../assets/image/logo_cut.png" alt="系统logo">
+        <span style="padding-left:.5rem;"><b>废旧电器回收智能管理平台</b></span>
       </div>
 
-      <h3>
-        <span style="color: #ffffff; display: flex; justify-content: center; font-size: 15px;margin: auto;">
+      <div class="center">
+            <div class="input">
+                <div><h3 style="font-size: .7rem;color: #ffffff; padding-bottom: .25rem">用 户 登 录</h3></div>
+
+                <div class="user" style="display: flex; height: 2rem; width: 10rem; margin: 0; justify-content: center;">
+                    <i class="el-icon-user" style="font-size: 1rem; margin-right: .625rem;"></i>
+                    <el-autocomplete v-model="user" placeholder="请输入用户名" @change="userCg" style="width: 8rem; height: 1rem;"
+                              :fetch-suggestions="queryUsr" @select="handleSelectUsr"></el-autocomplete>
+                </div>
+                <div class="user" style="display: flex; height: 2rem; width: 10rem; margin: 0; justify-content: center;">
+                    <i class="el-icon-lock" style="font-size: 1rem; margin-right: .625rem;"></i>
+                    <el-autocomplete v-model="pwd" placeholder="请输入密码" @change="pwdCg" style="width: 8rem; height: 1rem;"
+                              :fetch-suggestions="queryPwd" @select="handleSelectPwd" type="password"></el-autocomplete>
+                </div>
+            </div>
+
+            <div class="log">
+                <button style="color: #ffffff;background-color: #4095E5;font-size:.5rem;width: 3.5rem; margin: auto;
+                        border-radius:.25rem;  border: none; padding: 1%;" @click="login">
+                    登 录
+                </button>
+            </div>
+      </div>
+
+      <div class="footer">
+        <span style="color: #ffffff; display: flex; justify-content: center; font-size: .375rem; margin: auto;">
             <b>—————————•&nbsp;&nbsp;&nbsp;</b>深 圳 爱 析 科 技 有 限 责 任 公 司<b>&nbsp;&nbsp;&nbsp;•—————————</b>
         </span>
-      </h3>
+      </div>
     </div>
 </template>
 
@@ -45,7 +45,10 @@ export default {
     data(){
         return{
             user:'',
-            pwd:''
+            pwd:'',
+            htmlHeight: {
+              height: '300px'
+            }
         }
     },
     methods:{
@@ -74,78 +77,103 @@ export default {
         },
         handleSelectPwd(item){
             console.log(item)
+        },
+        getHtmlHeight () {
+          let htmlHeight = window.innerHeight + 'px'
+          this.$set(this.htmlHeight, 'height', htmlHeight)
         }
     },
+    mounted() {
+      this.getHtmlHeight()
+    }
 
 }
 </script>
 
 <style scoped>
+
 .login{
-    /*width: 1440px;*/
-    /*height: 860px;*/
-    width: 1080px;
-    height: 645px;
-    background-image: url("../assets/image/login.jpg");
+    //width: 1080px;
+    //height: 645px;
+    width: 100%;
+    height: 100%;
+    line-height: 100%;
+    background: url("../assets/image/login.jpg") top center no-repeat;
     background-size:cover;
     align-items: center;
     justify-content: center;
 
-    /*display: table-cell;*/
     vertical-align: middle;
     text-align: center;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
 }
 
-.warp{
-    width: 800px;
-    height: 300px;
-    margin: 20px 140px;
-    align-items: center;
-    justify-content: center;
-}
-
-h1{
+/* 头部样式起始处 */
+.header{
+  width: 100%;
+  height: 20%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 40px;
-  font: normal 48px Cookie, Noto Sans, Helvetica, sans-serif;
+  padding-top: .5rem;
+  font: normal 1.25rem Cookie, Noto Sans, Helvetica, sans-serif;
   font-family: sans-serif;;
   color: #ffffff;
-  margin: auto;
 }
 
-img{
-  height:80px;
+.header img{
+    height: 2rem;
+    width: 2rem;
 }
 
-.info{
-    /*width: 550px;*/
-    width: 413px;
-    /*height: 330px;*/
-    height: 225px;
+/*中部样式起始处*/
+.center{
+    width: 100%;
+    height: 50%;
+    padding: 1rem 0 0 0;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+  flex-direction: column;
+}
+
+.center .input{
+    width: 45%;
+    height: 65%;
     background-color: rgba(177, 203, 238, .6);
+    border-radius: 1rem;
+    padding: 1% 0 ;
+    margin: auto;
+    //vertical-align: middle;
+    text-align: center;
     align-items: center;
     justify-items: center;
-    border-radius: 35px;
-    margin: auto;
+  justify-content: space-evenly;
+    display: flex;
+    flex-direction: column;
 }
 
-h3{
+.center .log{
+    width: 45%;
+    height: 35%;
+    border-radius: 1rem;
+    padding: 1% 0 ;
+    text-align: center;
+    align-items: center;
+    justify-items: center;
+    display: flex;
+    flex-direction: column;
+}
+
+/*底部样式起始处*/
+.footer{
+    width: 100%;
+    height: 20%;
     display: flex;
     align-items: center;
     margin: auto;
-    bottom: 40px;
 }
 
-h2{
-    display: flex;
-    justify-content: center;
-    padding-top: 30px;
-    font-size: 25px;
-    color: #ffffff;
-    margin: auto;
-}
 </style>

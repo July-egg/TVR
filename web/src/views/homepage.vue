@@ -1,15 +1,15 @@
 <template>
   <div class="bg">
-    <el-container>
+    <el-container style="width: 100%; height: 100%; padding: 0; margin: 0;">
       <!--  顶栏    -->
-      <el-header height="140px">
+      <el-header style="height: 20%; padding: 0; margin: 0;">
         <topbar></topbar>
       </el-header>
 
       <!--  底部容器   -->
-      <el-container>
+      <el-container style="width: 100%; height: 80%; padding: 0; margin: 0;">
         <!--   侧边栏     -->
-        <el-aside width="150px">
+        <el-aside style="width: 20%; height: 100%; line-height: 100%; background-color: #2a4286;color: #333;">
             <el-menu
               :default-active="page"
               class="el-menu-vertical-demo"
@@ -17,8 +17,7 @@
               background-color="#2a4286"
               text-color="#fff"
               active-text-color="#ffd04b">
-
-              <el-submenu index="1" style="font-size: 18px; width: 150px;">
+              <el-submenu index="1" style="font-size: 18px; width: 100%;">
                 <template slot="title" style="font-size: 18px; width: 150px;line-height: 45px;">
                   <i class="el-icon-video-play" style="font-size: 18px;"></i>
                   <span style="font-size: 18px;">视频检测</span>
@@ -30,16 +29,15 @@
                 </el-menu-item-group>
               </el-submenu>
 
-              <el-menu-item index="2" style="font-size: 18px; height: 56px; width: 150px;">
+              <el-menu-item index="2" style="font-size: 18px; height: 56px; width: 100%;">
                 <i class="el-icon-document"></i>
                 <span slot="title">结果统计</span>
               </el-menu-item>
             </el-menu>
-
         </el-aside>
 
         <!--    主体内容    -->
-        <el-main>
+        <el-main style="width: 80%; height: 100%; background-color: #E9EEF3;color: #333;">
             <keep-alive>
               <result v-if="page=='2'"></result>
               <fog v-else-if="page=='1-1'"></fog>
@@ -47,7 +45,6 @@
             </keep-alive>
         </el-main>
       </el-container>
-
     </el-container>
   </div>
 </template>
@@ -96,47 +93,14 @@ export default {
 }
 </script>
 
-
 <style scoped>
 .bg{
-  /*background-color: rgb(30, 30, 30);*/
-  /*width: 1440px;*/
-  /*height: 860px;*/
-  width: 1080px;
-  height: 645px;
+  width: 100%;
+  height: 100%;
 }
 
-/*  el-container布局 */
-.el-header{
-  background-color: #B3C0D1;
-  color: #333;
-  text-align: center;
-  /*line-height: 140px;*/
-  line-height: 105px;
-  /*height: 140px;*/
-  height: 105px;
-  padding: 0;
-  margin: 0;
-}
-
-.el-aside {
-  background-color: #2a4286;
-  color: #333;
-  /*line-height: 720px;*/
-  line-height: 540px;
-}
-
-.el-main {
-  background-color: #E9EEF3;
-  color: #333;
-  line-height: 540px;
-  /*width: 1240px;*/
-  width: 930px;
-  /*height: 720px;*/
-  height: 540px;
-  overflow: unset;
-  margin: auto;
-  padding: 10px;
+::v-deep .el-card__body, .el-main {
+    padding: 10px;
 }
 
 ::v-deep .el-submenu .el-menu-item-group__title {

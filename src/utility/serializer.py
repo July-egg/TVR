@@ -60,6 +60,7 @@ class HtmlSerializer:
             workstation: str,
             date_time: datetime,
             memo: str,
+            video_type: str,
             items: List[Tuple[int, int, float, float, SECTION_CATEGORY, float, str, int, float]]) -> Tuple[List[Tuple[str, str]], Any]:
 
         images_dir = path.join(save_dir, 'images')

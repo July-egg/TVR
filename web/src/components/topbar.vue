@@ -31,6 +31,8 @@ export default {
 
 <style scoped>
 .border{
+  width: 100%;
+  height: 100%;
   background-color: #243a77;
   display: flex;
   align-items: center;
